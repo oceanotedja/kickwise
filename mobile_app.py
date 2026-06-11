@@ -1,0 +1,508 @@
+"""
+Kickwise - World Cup 2026 Predictor
+Mobile-first Streamlit app matching the Figma design.
+Run: venv/bin/streamlit run app.py
+"""
+import math, random, bisect
+import pandas as pd
+import streamlit as st
+
+DATA_URL = "https://raw.githubusercontent.com/martj42/international_results/master/results.csv"
+SINCE="2019-01-01"; HALF=365; MIN_G=10; IT=25; MG=6; RHO=-0.13
+ELO_W=0.4; ELO_S=1500; ELO_K=32; DB=0.22
+HOSTS={"United States","Mexico","Canada"}
+TW={"FIFA World Cup":1.5,"UEFA Euro":1.4,"Copa América":1.4,
+    "Africa Cup of Nations":1.3,"AFC Asian Cup":1.3,
+    "CONCACAF Gold Cup":1.2,"FIFA World Cup qualification":1.1,
+    "UEFA Nations League":1.1,"Friendly":0.4}
+
+FLAGS = {
+    "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
+    "Australia":"🇦🇺","Paraguay":"🇵🇾","Turkey":"🇹🇷","United States":"🇺🇸",
+    "Belgium":"🇧🇪","Egypt":"🇪🇬","Iran":"🇮🇷","New Zealand":"🇳🇿",
+    "Bosnia and Herzegovina":"🇧🇦","Canada":"🇨🇦","Qatar":"🇶🇦","Switzerland":"🇨🇭",
+    "Brazil":"🇧🇷","Haiti":"🇭🇹","Morocco":"🇲🇦","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "Cape Verde":"🇨🇻","Saudi Arabia":"🇸🇦","Spain":"🇪🇸","Uruguay":"🇺🇾",
+    "Colombia":"🇨🇴","DR Congo":"🇨🇩","Portugal":"🇵🇹","Uzbekistan":"🇺🇿",
+    "Croatia":"🇭🇷","England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Ghana":"🇬🇭","Panama":"🇵🇦",
+    "Curaçao":"🏳️","Ecuador":"🇪🇨","Germany":"🇩🇪","Ivory Coast":"🇨🇮",
+    "Czech Republic":"🇨🇿","Mexico":"🇲🇽","South Africa":"🇿🇦","South Korea":"🇰🇷",
+    "France":"🇫🇷","Iraq":"🇮🇶","Norway":"🇳🇴","Senegal":"🇸🇳",
+    "Japan":"🇯🇵","Netherlands":"🇳🇱","Sweden":"🇸🇪","Tunisia":"🇹🇳",
+}
+
+GROUPS = {
+    "A":["Algeria","Argentina","Austria","Jordan"],
+    "B":["Australia","Paraguay","Turkey","United States"],
+    "C":["Belgium","Egypt","Iran","New Zealand"],
+    "D":["Bosnia and Herzegovina","Canada","Qatar","Switzerland"],
+    "E":["Brazil","Haiti","Morocco","Scotland"],
+    "F":["Cape Verde","Saudi Arabia","Spain","Uruguay"],
+    "G":["Colombia","DR Congo","Portugal","Uzbekistan"],
+    "H":["Croatia","England","Ghana","Panama"],
+    "I":["Curaçao","Ecuador","Germany","Ivory Coast"],
+    "J":["Czech Republic","Mexico","South Africa","South Korea"],
+    "K":["France","Iraq","Norway","Senegal"],
+    "L":["Japan","Netherlands","Sweden","Tunisia"],
+}
+
+def tw(t):
+    for k,v in TW.items():
+        if k.lower() in t.lower(): return v
+    return 1.0
+
+def flag(t): return FLAGS.get(t,"🏳️")
+
+@st.cache_data(ttl=6*3600, show_spinner=False)
+def load_and_build():
+    df = pd.read_csv(DATA_URL)
+    df["date"] = pd.to_datetime(df["date"])
+    played = df.dropna(subset=["home_score","away_score"]).sort_values("date")
+    elo = {}
+    for r in played.itertuples(index=False):
+        h,a=r.home_team,r.away_team
+        rh,ra=elo.get(h,ELO_S),elo.get(a,ELO_S)
+        eh=1/(1+10**((ra-rh)/400))
+        sh=1 if r.home_score>r.away_score else(0.5 if r.home_score==r.away_score else 0)
+        K=ELO_K*tw(r.tournament)
+        elo[h]=rh+K*(sh-eh); elo[a]=ra+K*((1-sh)-(1-eh))
+    d=played[played["date"]>=SINCE].copy()
+    counts=pd.concat([d["home_team"],d["away_team"]]).value_counts()
+    uni=set(counts[counts>=MIN_G].index)
+    m=d[d["home_team"].isin(uni)&d["away_team"].isin(uni)].copy()
+    ref=m["date"].max()
+    m["w"]=0.5**((ref-m["date"]).dt.days/HALF)*m["tournament"].apply(tw)
+    tm={t:[] for t in uni}
+    for r in m.itertuples(index=False):
+        tm[r.home_team].append((r.away_team,r.home_score,r.away_score,r.w))
+        tm[r.away_team].append((r.home_team,r.away_score,r.home_score,r.w))
+    ws={t:sum(w*g for _,g,gc,w in tm[t]) for t in uni}
+    wc_={t:sum(w*gc for _,g,gc,w in tm[t]) for t in uni}
+    mu=(m["w"]*(m["home_score"]+m["away_score"])).sum()/(m["w"].sum()*2)
+    at={t:1.0 for t in uni}; de={t:1.0 for t in uni}
+    for _ in range(IT):
+        na,nd={},{}
+        for t in uni:
+            od=sum(w*de[o] for o,g,gc,w in tm[t]); oa=sum(w*at[o] for o,g,gc,w in tm[t])
+            na[t]=ws[t]/(mu*od) if od else 1.0; nd[t]=wc_[t]/(mu*oa) if oa else 1.0
+        am=sum(na.values())/len(na); dm=sum(nd.values())/len(nd)
+        at={t:v/am for t,v in na.items()}; de={t:v/dm for t,v in nd.items()}
+    nn=m[m["neutral"]==False]
+    ha=nn["home_score"].mean()/nn["away_score"].mean()
+    upcoming=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
+                (df["date"]<="2026-06-27")&(df["home_score"].isna())].copy()
+    upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
+    return at,de,mu,ha,elo,sorted(uni),upcoming
+
+def pois(k,l): return l**k*math.exp(-l)/math.factorial(k)
+def tau(x,y,l,m,r):
+    if x==0 and y==0: return 1-l*m*r
+    if x==0 and y==1: return 1+l*r
+    if x==1 and y==0: return 1+m*r
+    if x==1 and y==1: return 1-r
+    return 1.0
+
+def predict(a,b,at,de,mu,ha,elo,home=None):
+    ea=at.get(a,1.0)*de.get(b,1.0)*mu; eb=at.get(b,1.0)*de.get(a,1.0)*mu
+    tilt=math.sqrt(ha)
+    if home==a: ea*=tilt; eb/=tilt
+    elif home==b: eb*=tilt; ea/=tilt
+    pa=[pois(g,ea) for g in range(MG+1)]; pb=[pois(g,eb) for g in range(MG+1)]
+    grid,tot={},0.0
+    for x in range(MG+1):
+        for y in range(MG+1):
+            p=pa[x]*pb[y]*tau(x,y,ea,eb,RHO); grid[(x,y)]=p; tot+=p
+    for k in grid: grid[k]/=tot
+    dc=[sum(p for (x,y),p in grid.items() if x>y),
+        sum(p for (x,y),p in grid.items() if x==y),
+        sum(p for (x,y),p in grid.items() if x<y)]
+    ra,rb=elo.get(a,ELO_S),elo.get(b,ELO_S)
+    eh=1/(1+10**((rb-ra)/400))
+    el=[max(eh-DB/2,0.01),DB,max((1-eh)-DB/2,0.01)]
+    bl=[dc[i]*(1-ELO_W)+el[i]*ELO_W for i in range(3)]
+    s=sum(bl); bl=[x/s for x in bl]
+    top=sorted(grid.items(),key=lambda kv:kv[1],reverse=True)[:5]
+    return bl[0],bl[1],bl[2],top,ea,eb,ra,rb
+
+# ── Page config ──────────────────────────────────────────
+st.set_page_config(page_title="Kickwise",page_icon="⚡",layout="centered",
+                   initial_sidebar_state="collapsed")
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+
+html,body,[class*="css"]{
+  font-family:'Inter',sans-serif!important;
+  background:#0a0a0a!important;
+  color:#e0e0e0!important;
+}
+#MainMenu,footer,header{visibility:hidden;}
+.block-container{padding:0 1rem 5rem!important;max-width:430px!important;margin:auto;}
+.stRadio>div{display:flex!important;gap:8px!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding:2px 0!important;background:transparent!important;}
+.stRadio label{background:#1c1c1c!important;border-radius:999px!important;padding:6px 16px!important;font-size:0.78rem!important;font-weight:600!important;color:#888!important;white-space:nowrap!important;cursor:pointer!important;border:none!important;}
+.stRadio label:has(input:checked){background:#00FF7F!important;color:#000!important;}
+.stSelectbox>div>div{background:#1c1c1c!important;border:1px solid #2a2a2a!important;border-radius:12px!important;color:#fff!important;}
+div[data-testid="stVerticalBlock"]{gap:0!important;}
+
+/* page header */
+.kw-eyebrow{font-size:0.7rem;font-weight:700;color:#F5C518;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;}
+.kw-title{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:#fff;line-height:1;margin:0 0 2px;}
+.kw-sub{font-size:0.8rem;color:#555;margin-bottom:1rem;}
+.kw-divider{height:1px;background:#1e1e1e;margin:0.75rem 0 1rem;}
+
+/* fixture card */
+.fx-card{background:#161616;border:1px solid #222;border-radius:16px;padding:0.85rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.fx-time{font-size:0.75rem;font-weight:600;color:#aaa;letter-spacing:0.05em;}
+.fx-predict{display:flex;align-items:center;gap:5px;background:#1c2e1c;border:1px solid #00FF7F33;border-radius:999px;padding:5px 12px;font-size:0.72rem;font-weight:700;color:#00FF7F;letter-spacing:0.05em;}
+
+/* match detail */
+.match-card{background:#111;border:1px solid #1e1e1e;border-radius:20px;padding:1.25rem 1rem;margin:0.5rem 0 1rem;}
+.match-teams{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+.match-team{font-size:1rem;font-weight:800;color:#fff;flex:1;line-height:1.2;}
+.match-team.right{text-align:right;}
+.match-vs{background:#1e1e1e;border-radius:8px;padding:5px 10px;font-size:0.65rem;color:#444;font-weight:700;letter-spacing:0.1em;margin:0 8px;}
+
+/* prob bar */
+.prob-wrap{display:flex;height:52px;gap:4px;border-radius:12px;overflow:hidden;margin-bottom:1rem;}
+.prob-seg{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.prob-seg.win{background:linear-gradient(160deg,#00FF7F,#00cc60);}
+.prob-seg.draw{background:#252525;}
+.prob-seg.loss{background:linear-gradient(160deg,#1a56db,#1341b0);}
+.prob-pct{font-size:1rem;font-weight:800;color:#fff;}
+.prob-lbl{font-size:0.55rem;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-top:1px;}
+
+/* stats row */
+.stats-row{display:flex;gap:8px;margin-bottom:0.75rem;}
+.stat-box{flex:1;background:#161616;border-radius:12px;padding:10px;text-align:center;}
+.stat-val{font-size:1rem;font-weight:800;color:#00FF7F;}
+.stat-lbl{font-size:0.6rem;color:#555;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;}
+
+/* scorelines */
+.sl-title{font-size:0.65rem;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin:1rem 0 0.5rem;}
+.sl-item{display:flex;align-items:center;background:#161616;border-radius:10px;padding:0.55rem 0.75rem;margin-bottom:6px;}
+.sl-score{font-size:0.88rem;font-weight:700;color:#fff;flex:1;}
+.sl-bar-wrap{flex:2;height:3px;background:#222;border-radius:2px;margin:0 10px;}
+.sl-bar{height:3px;border-radius:2px;background:#00FF7F;}
+.sl-pct{font-size:0.82rem;font-weight:700;color:#00FF7F;min-width:2.5rem;text-align:right;}
+
+/* standings */
+.grp-row{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
+.grp-pill{width:36px;height:36px;border-radius:50%;background:#1c1c1c;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#888;cursor:pointer;}
+.grp-pill.active{background:#00FF7F;color:#000;}
+.st-header{display:flex;padding:0 0.5rem;margin-bottom:6px;}
+.st-header span{font-size:0.6rem;color:#444;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;}
+.st-row{display:flex;align-items:center;background:#161616;border-radius:12px;padding:0.65rem 0.75rem;margin-bottom:6px;border-left:3px solid transparent;}
+.st-row.qualify{border-left-color:#00FF7F;}
+.st-row.third{border-left-color:#F5C518;}
+.st-pos{font-size:0.85rem;font-weight:700;color:#888;width:20px;}
+.st-flag{font-size:1.2rem;margin:0 8px;}
+.st-name{flex:1;}
+.st-team-code{font-size:0.85rem;font-weight:700;color:#fff;}
+.st-team-full{font-size:0.65rem;color:#555;}
+.st-stat{font-size:0.8rem;font-weight:600;color:#aaa;width:22px;text-align:center;}
+.st-pts{font-size:0.85rem;font-weight:800;color:#00FF7F;width:22px;text-align:center;}
+.st-legend{display:flex;flex-direction:column;gap:6px;margin-top:1rem;}
+.st-legend-item{display:flex;align-items:center;gap:8px;font-size:0.72rem;color:#555;}
+.st-dot{width:10px;height:10px;border-radius:50%;}
+
+/* my picks */
+.picks-stat{flex:1;background:#161616;border-radius:14px;padding:1rem 0.75rem;}
+.picks-stat-icon{font-size:1.1rem;margin-bottom:6px;}
+.picks-stat-val{font-size:1.4rem;font-weight:800;color:#fff;}
+.picks-stat-lbl{font-size:0.6rem;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;}
+.champ-card{background:#161616;border-radius:16px;padding:1rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;}
+.champ-name{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#fff;letter-spacing:1px;}
+.champ-sub{font-size:0.72rem;color:#555;margin-top:2px;}
+.champ-badge{display:inline-flex;align-items:center;gap:4px;background:#1e1a00;border:1px solid #F5C518;border-radius:999px;padding:4px 10px;font-size:0.7rem;font-weight:700;color:#F5C518;margin-top:6px;}
+.contender-row{display:flex;align-items:center;background:#161616;border-radius:12px;padding:0.75rem 1rem;margin-bottom:6px;}
+.cont-pos{font-size:0.85rem;font-weight:700;color:#555;width:20px;}
+.cont-flag{font-size:1.1rem;margin:0 10px;}
+.cont-name{flex:1;font-size:0.9rem;font-weight:700;color:#fff;}
+.cont-mult{font-size:0.9rem;font-weight:700;color:#00FF7F;}
+.sect-title{font-size:0.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin:1rem 0 0.5rem;}
+
+/* bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #1e1e1e;z-index:999;display:flex;justify-content:space-around;padding:10px 0 14px;}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0 20px;}
+.nav-icon{font-size:1.2rem;color:#444;}
+.nav-icon.active{color:#00FF7F;}
+.nav-lbl{font-size:0.58rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.08em;}
+.nav-lbl.active{color:#00FF7F;}
+.nav-active-bg{background:#1c2e1c;border-radius:12px;padding:6px 20px;}
+</style>
+""", unsafe_allow_html=True)
+
+# ── Load ────────────────────────────────────────────────────
+with st.spinner(""):
+    at,de,mu,ha,elo,team_list,upcoming = load_and_build()
+
+# ── Navigation state ────────────────────────────────────────
+if "tab" not in st.session_state: st.session_state.tab = "predict"
+if "grp" not in st.session_state: st.session_state.grp = "A"
+if "pred_match" not in st.session_state: st.session_state.pred_match = None
+
+# nav buttons via query or columns
+c1,c2,c3 = st.columns(3)
+with c1:
+    if st.button("⚡ PREDICT", use_container_width=True,
+                 type="primary" if st.session_state.tab=="predict" else "secondary"):
+        st.session_state.tab="predict"; st.rerun()
+with c2:
+    if st.button("📊 STANDINGS", use_container_width=True,
+                 type="primary" if st.session_state.tab=="standings" else "secondary"):
+        st.session_state.tab="standings"; st.rerun()
+with c3:
+    if st.button("👤 MY PICKS", use_container_width=True,
+                 type="primary" if st.session_state.tab=="picks" else "secondary"):
+        st.session_state.tab="picks"; st.rerun()
+
+st.markdown('<div class="kw-divider"></div>', unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# PREDICT TAB
+# ════════════════════════════════════════════════════════════
+if st.session_state.tab == "predict":
+    st.markdown("""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">PREDICTIONS</div>
+    <div class="kw-sub">Powered by Kickwise AI · 62.9% accuracy</div>
+    """, unsafe_allow_html=True)
+
+    # Round filter
+    round_sel = st.radio("Round", ["Group Stage","Round of 16","Quarter Finals","Semi Finals","Final"],
+                         horizontal=True, label_visibility="collapsed")
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # Show fixtures list
+    if not upcoming.empty:
+        shown = 0
+        for _, row in upcoming.iterrows():
+            h, a = row["home_team"], row["away_team"]
+            if h not in at or a not in at: continue
+            date_str = row["date_fmt"]
+            time_str = f"{date_str} · 19:00"
+            btn_key = f"fx_{h}_{a}"
+            col1, col2 = st.columns([3,1])
+            with col1:
+                st.markdown(f"""
+                <div class="fx-card" style="margin-bottom:0">
+                  <div>
+                    <div class="fx-time">{time_str}</div>
+                    <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:3px;">
+                      {flag(h)} {h} <span style="color:#444;font-size:0.75rem;margin:0 4px;">vs</span> {flag(a)} {a}
+                    </div>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+            with col2:
+                if st.button("⚡ PREDICT", key=btn_key, use_container_width=True):
+                    st.session_state.pred_match = (h, a)
+                    st.session_state.tab = "predict_detail"
+                    st.rerun()
+            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+            shown += 1
+            if shown >= 20: break
+    else:
+        st.info("No upcoming fixtures available.")
+
+# ════════════════════════════════════════════════════════════
+# PREDICT DETAIL
+# ════════════════════════════════════════════════════════════
+elif st.session_state.tab == "predict_detail":
+    if st.button("← Back"):
+        st.session_state.tab = "predict"; st.rerun()
+    h, a = st.session_state.pred_match
+    pw, pd_, pb, top, ea, eb, ra, rb = predict(h, a, at, de, mu, ha, elo)
+    pw_w = max(int(pw*100), 8)
+    pd_w = max(int(pd_*100), 8)
+    pb_w = max(int(pb*100), 8)
+    st.markdown(f"""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">MATCH PREVIEW</div>
+    <div class="kw-divider"></div>
+    <div class="match-card">
+      <div class="match-teams">
+        <div class="match-team">{flag(h)}<br>{h}</div>
+        <div class="match-vs">VS</div>
+        <div class="match-team right">{flag(a)}<br>{a}</div>
+      </div>
+      <div class="prob-wrap">
+        <div class="prob-seg win" style="flex:{pw_w}">
+          <div class="prob-pct">{pw*100:.0f}%</div>
+          <div class="prob-lbl">Win</div>
+        </div>
+        <div class="prob-seg draw" style="flex:{pd_w}">
+          <div class="prob-pct">{pd_*100:.0f}%</div>
+          <div class="prob-lbl">Draw</div>
+        </div>
+        <div class="prob-seg loss" style="flex:{pb_w}">
+          <div class="prob-pct">{pb*100:.0f}%</div>
+          <div class="prob-lbl">Win</div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    # Stats
+    st.markdown(f"""
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val">{ea:.2f}</div><div class="stat-lbl">{h} xG</div></div>
+      <div class="stat-box"><div class="stat-val">{ra:.0f}</div><div class="stat-lbl">{h} Elo</div></div>
+      <div class="stat-box"><div class="stat-val">{rb:.0f}</div><div class="stat-lbl">{a} Elo</div></div>
+      <div class="stat-box"><div class="stat-val">{eb:.2f}</div><div class="stat-lbl">{a} xG</div></div>
+    </div>
+    """, unsafe_allow_html=True)
+    # Scorelines
+    st.markdown('<div class="sl-title">Most likely scorelines</div>', unsafe_allow_html=True)
+    max_p = top[0][1] if top else 1
+    for (x,y),p in top:
+        bw = int((p/max_p)*100)
+        st.markdown(f"""
+        <div class="sl-item">
+          <div class="sl-score">{h} {x} – {y} {a}</div>
+          <div class="sl-bar-wrap"><div class="sl-bar" style="width:{bw}%"></div></div>
+          <div class="sl-pct">{p*100:.1f}%</div>
+        </div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# STANDINGS TAB
+# ════════════════════════════════════════════════════════════
+elif st.session_state.tab == "standings":
+    st.markdown("""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">STANDINGS</div>
+    """, unsafe_allow_html=True)
+
+    # Group selector pills
+    grp_cols = st.columns(12)
+    for i, g in enumerate("ABCDEFGHIJKL"):
+        with grp_cols[i]:
+            if st.button(g, key=f"grp_{g}",
+                         type="primary" if st.session_state.grp==g else "secondary",
+                         use_container_width=True):
+                st.session_state.grp = g; st.rerun()
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    grp = st.session_state.grp
+    teams_in_grp = GROUPS.get(grp, [])
+
+    # Column headers
+    st.markdown("""
+    <div style="display:flex;padding:0 8px;margin-bottom:4px;">
+      <span style="flex:3;font-size:0.6rem;color:#444;font-weight:700;text-transform:uppercase;">TEAM</span>
+      <span style="width:22px;text-align:center;font-size:0.6rem;color:#444;font-weight:700;">P</span>
+      <span style="width:22px;text-align:center;font-size:0.6rem;color:#444;font-weight:700;">W</span>
+      <span style="width:22px;text-align:center;font-size:0.6rem;color:#444;font-weight:700;">D</span>
+      <span style="width:22px;text-align:center;font-size:0.6rem;color:#444;font-weight:700;">L</span>
+      <span style="width:26px;text-align:center;font-size:0.6rem;color:#444;font-weight:700;">GD</span>
+      <span style="width:26px;text-align:center;font-size:0.6rem;color:#00FF7F;font-weight:700;">PTS</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    for i, team in enumerate(teams_in_grp):
+        border = "qualify" if i < 2 else ("third" if i == 2 else "")
+        code = team[:3].upper()
+        st.markdown(f"""
+        <div class="st-row {border}">
+          <div class="st-pos">{i+1}</div>
+          <div class="st-flag">{flag(team)}</div>
+          <div class="st-name">
+            <div class="st-team-code">{code}</div>
+            <div class="st-team-full">{team}</div>
+          </div>
+          <div class="st-stat">0</div>
+          <div class="st-stat">0</div>
+          <div class="st-stat">0</div>
+          <div class="st-stat">0</div>
+          <div class="st-stat">+0</div>
+          <div class="st-pts">0</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="st-legend">
+      <div class="st-legend-item"><div class="st-dot" style="background:#00FF7F"></div> Advance to Round of 16</div>
+      <div class="st-legend-item"><div class="st-dot" style="background:#F5C518"></div> Third-place playoff contention</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# MY PICKS TAB
+# ════════════════════════════════════════════════════════════
+elif st.session_state.tab == "picks":
+    st.markdown("""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">MY PICKS</div>
+    """, unsafe_allow_html=True)
+
+    # Stats row
+    st.markdown("""
+    <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+      <div class="picks-stat">
+        <div class="picks-stat-icon">🎯</div>
+        <div class="picks-stat-val">0</div>
+        <div class="picks-stat-lbl">Predicted</div>
+      </div>
+      <div class="picks-stat">
+        <div class="picks-stat-icon">📈</div>
+        <div class="picks-stat-val">17</div>
+        <div class="picks-stat-lbl">Remaining</div>
+      </div>
+      <div class="picks-stat">
+        <div class="picks-stat-icon">🏅</div>
+        <div class="picks-stat-val">0%</div>
+        <div class="picks-stat-lbl">Accuracy</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Champion prediction
+    st.markdown('<div class="sect-title">Champion Prediction</div>', unsafe_allow_html=True)
+    champ_opts = ["— Pick your champion —"] + team_list
+    champ = st.selectbox("Champion", champ_opts, label_visibility="collapsed")
+    if champ and champ != "— Pick your champion —":
+        champ_elo = elo.get(champ, ELO_S)
+        mult = round(max(1.5, 10000/champ_elo), 1)
+        st.markdown(f"""
+        <div class="champ-card">
+          <div style="font-size:2.5rem">{flag(champ)}</div>
+          <div>
+            <div class="champ-name">{champ.upper()}</div>
+            <div class="champ-sub">Your champion pick</div>
+            <div class="champ-badge">⭐ {mult}x MULTIPLIER</div>
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+    # Top contenders by Elo
+    st.markdown('<div class="sect-title">Top Contenders</div>', unsafe_allow_html=True)
+    wc_elo = {t:elo.get(t,ELO_S) for g in GROUPS.values() for t in g}
+    top_cont = sorted(wc_elo.items(), key=lambda x:x[1], reverse=True)[:8]
+    for i,(team,rating) in enumerate(top_cont):
+        mult = round(max(1.5, 10000/rating), 1)
+        st.markdown(f"""
+        <div class="contender-row">
+          <div class="cont-pos">{i+1}</div>
+          <div class="cont-flag">{flag(team)}</div>
+          <div class="cont-name">{team}</div>
+          <div class="cont-mult">{mult}x</div>
+        </div>""", unsafe_allow_html=True)
+
+# ── Bottom nav ───────────────────────────────────────────────
+tab = st.session_state.tab
+p_active = "active" if tab in ("predict","predict_detail") else ""
+s_active = "active" if tab=="standings" else ""
+m_active = "active" if tab=="picks" else ""
+st.markdown(f"""
+<div class="bottom-nav">
+  <div style="text-align:center">
+    <div class="nav-icon {p_active}">⚡</div>
+    <div class="nav-lbl {p_active}">PREDICT</div>
+  </div>
+  <div style="text-align:center">
+    <div class="nav-icon {s_active}">📊</div>
+    <div class="nav-lbl {s_active}">STANDINGS</div>
+  </div>
+  <div style="text-align:center">
+    <div class="nav-icon {m_active}">👤</div>
+    <div class="nav-lbl {m_active}">MY PICKS</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
