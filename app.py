@@ -339,24 +339,17 @@ if st.session_state.tab == "predict":
                 date_str = pd.Timestamp(row["date"]).strftime("%b %d")
                 winner_h = "color:#00FF7F;font-weight:900" if hs > as_ else ("color:#aaa" if hs < as_ else "color:#F5C518")
                 winner_a = "color:#00FF7F;font-weight:900" if as_ > hs else ("color:#aaa" if as_ < hs else "color:#F5C518")
-                col1, col2 = st.columns([3,1])
-                with col1:
-                    st.markdown(f"""
-                    <div class="fx-card" style="border-color:#1a3a1a;">
-                      <div style="flex:1;">
-                        <div class="fx-time">FT · {date_str}</div>
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                          <div style="font-size:0.88rem;font-weight:700;{winner_h}">{flag(h)} {h}</div>
-                          <div style="font-size:1.1rem;font-weight:900;color:#fff;margin:0 10px;">{hs} – {as_}</div>
-                          <div style="font-size:0.88rem;font-weight:700;{winner_a}">{a} {flag(a)}</div>
-                        </div>
-                      </div>
-                    </div>""", unsafe_allow_html=True)
-                with col2:
-                    if st.button("🔍 Stats", key=f"res_{h}_{a}_{date_str}", use_container_width=True):
-                        st.session_state.pred_match = (h, a)
-                        st.session_state.tab = "predict_detail"
-                        st.rerun()
+                st.markdown(f"""
+                <div class="fx-card" style="border-color:#1a3a1a;">
+                  <div style="flex:1;">
+                    <div class="fx-time">FT · {date_str}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                      <div style="font-size:0.88rem;font-weight:700;{winner_h}">{flag(h)} {h}</div>
+                      <div style="font-size:1.1rem;font-weight:900;color:#fff;margin:0 10px;">{hs} – {as_}</div>
+                      <div style="font-size:0.88rem;font-weight:700;{winner_a}">{a} {flag(a)}</div>
+                    </div>
+                  </div>
+                </div>""", unsafe_allow_html=True)
         st.stop()
 
     # Round filter
