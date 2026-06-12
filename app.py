@@ -6,6 +6,11 @@ Run: venv/bin/streamlit run app.py
 import math, random, bisect
 import pandas as pd
 import streamlit as st
+try:
+    from streamlit_autorefresh import st_autorefresh
+    HAS_AUTOREFRESH = True
+except ImportError:
+    HAS_AUTOREFRESH = False
 
 DATA_URL = "https://raw.githubusercontent.com/martj42/international_results/master/results.csv"
 SINCE="2019-01-01"; HALF=365; MIN_G=10; IT=25; MG=6; RHO=-0.13
@@ -51,9 +56,14 @@ GROUPS = {
 # The public dataset can lag 1-2 days behind live matches.
 # Add finished results here: (home, away, home_goals, away_goals)
 # They are used ONLY until the dataset catches up (no double counting).
+# Add results here as matches finish (until dataset catches up ~24hrs later)
+# Format: (home_team, away_team, home_goals, away_goals)
 MANUAL_RESULTS = [
-    ("Mexico", "South Africa", 2, 0),
-    ("South Korea", "Czech Republic", 2, 1),
+    ("Mexico", "South Africa", 2, 0),        # Jun 11 - Group A
+    ("South Korea", "Czech Republic", 2, 1), # Jun 11 - Group A
+    # Jun 12 results - add below as they finish:
+    # ("Canada", "Bosnia and Herzegovina", X, X),
+    # ("United States", "Paraguay", X, X),
 ]
 
 def compute_standings(group_teams, wc_df):
@@ -167,6 +177,9 @@ def predict(a,b,at,de,mu,ha,elo,home=None):
 # ── Page config ──────────────────────────────────────────
 st.set_page_config(page_title="Kickwise",page_icon="⚡",layout="centered",
                    initial_sidebar_state="collapsed")
+# Auto-refresh every 2 hours (7,200,000 ms)
+if HAS_AUTOREFRESH:
+    st_autorefresh(interval=2*60*60*1000, limit=None, key="kickwise_refresh")
 
 st.markdown("""
 <style>
@@ -309,6 +322,43 @@ if st.session_state.tab == "predict":
     <div class="kw-sub">Powered by Kickwise AI · 62.9% accuracy</div>
     """, unsafe_allow_html=True)
 
+    # Tab: Upcoming vs Results
+    view_mode = st.radio("View", ["⚽ Upcoming", "📋 Results"],
+                         horizontal=True, label_visibility="collapsed")
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    if view_mode == "📋 Results":
+        # Show all played matches
+        played_matches = wc_all.dropna(subset=["home_score","away_score"]).sort_values("date", ascending=False)
+        if played_matches.empty:
+            st.info("No results yet — check back after matches finish.")
+        else:
+            for _, row in played_matches.iterrows():
+                h, a = row["home_team"], row["away_team"]
+                hs, as_ = int(row["home_score"]), int(row["away_score"])
+                date_str = pd.Timestamp(row["date"]).strftime("%b %d")
+                winner_h = "color:#00FF7F;font-weight:900" if hs > as_ else ("color:#aaa" if hs < as_ else "color:#F5C518")
+                winner_a = "color:#00FF7F;font-weight:900" if as_ > hs else ("color:#aaa" if as_ < hs else "color:#F5C518")
+                col1, col2 = st.columns([3,1])
+                with col1:
+                    st.markdown(f"""
+                    <div class="fx-card" style="border-color:#1a3a1a;">
+                      <div style="flex:1;">
+                        <div class="fx-time">FT · {date_str}</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                          <div style="font-size:0.88rem;font-weight:700;{winner_h}">{flag(h)} {h}</div>
+                          <div style="font-size:1.1rem;font-weight:900;color:#fff;margin:0 10px;">{hs} – {as_}</div>
+                          <div style="font-size:0.88rem;font-weight:700;{winner_a}">{a} {flag(a)}</div>
+                        </div>
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    if st.button("🔍 Stats", key=f"res_{h}_{a}_{date_str}", use_container_width=True):
+                        st.session_state.pred_match = (h, a)
+                        st.session_state.tab = "predict_detail"
+                        st.rerun()
+        st.stop()
+
     # Round filter
     round_sel = st.radio("Round", ["Group Stage","Round of 16","Quarter Finals","Semi Finals","Final"],
                          horizontal=True, label_visibility="collapsed")
@@ -323,22 +373,45 @@ if st.session_state.tab == "predict":
             date_str = row["date_fmt"]
             time_str = f"{date_str} · 19:00"
             btn_key = f"fx_{h}_{a}"
-            col1, col2 = st.columns([3,1])
-            with col1:
+            # Check if this match has a result
+            match_result = wc_all[
+                (wc_all["home_team"]==h) & (wc_all["away_team"]==a)
+            ].dropna(subset=["home_score","away_score"])
+            has_result = len(match_result) > 0
+
+            if has_result:
+                hs = int(match_result.iloc[0]["home_score"])
+                as_ = int(match_result.iloc[0]["away_score"])
+                winner_h = "color:#00FF7F;font-weight:900" if hs > as_ else ("color:#aaa" if hs < as_ else "color:#F5C518")
+                winner_a = "color:#00FF7F;font-weight:900" if as_ > hs else ("color:#aaa" if as_ < hs else "color:#F5C518")
                 st.markdown(f"""
-                <div class="fx-card" style="margin-bottom:0">
-                  <div>
-                    <div class="fx-time">{time_str}</div>
-                    <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:3px;">
-                      {flag(h)} {h} <span style="color:#444;font-size:0.75rem;margin:0 4px;">vs</span> {flag(a)} {a}
+                <div class="fx-card" style="margin-bottom:0;border-color:#1a3a1a;">
+                  <div style="flex:1;">
+                    <div class="fx-time">FT · {date_str}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                      <div style="font-size:0.88rem;font-weight:700;{winner_h}">{flag(h)} {h}</div>
+                      <div style="font-size:1.1rem;font-weight:900;color:#fff;margin:0 10px;">{hs} – {as_}</div>
+                      <div style="font-size:0.88rem;font-weight:700;{winner_a}">{a} {flag(a)}</div>
                     </div>
                   </div>
                 </div>""", unsafe_allow_html=True)
-            with col2:
-                if st.button("⚡ PREDICT", key=btn_key, use_container_width=True):
-                    st.session_state.pred_match = (h, a)
-                    st.session_state.tab = "predict_detail"
-                    st.rerun()
+            else:
+                col1, col2 = st.columns([3,1])
+                with col1:
+                    st.markdown(f"""
+                    <div class="fx-card" style="margin-bottom:0">
+                      <div>
+                        <div class="fx-time">{time_str}</div>
+                        <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:3px;">
+                          {flag(h)} {h} <span style="color:#444;font-size:0.75rem;margin:0 4px;">vs</span> {flag(a)} {a}
+                        </div>
+                      </div>
+                    </div>""", unsafe_allow_html=True)
+                with col2:
+                    if st.button("⚡ PREDICT", key=btn_key, use_container_width=True):
+                        st.session_state.pred_match = (h, a)
+                        st.session_state.tab = "predict_detail"
+                        st.rerun()
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
             shown += 1
             if shown >= 20: break
