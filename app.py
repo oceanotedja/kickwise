@@ -101,6 +101,13 @@ def flag(t): return FLAGS.get(t,"🏳️")
 def load_and_build():
     df = pd.read_csv(DATA_URL)
     df["date"] = pd.to_datetime(df["date"])
+    # Fill in manual results FIRST so they feed the model too:
+    # Elo updates, attack/defense ratings, and the favourites ranking
+    # all see these matches as played (only where dataset lags behind).
+    for mh, ma, mhs, mas in MANUAL_RESULTS:
+        mask = (df["home_team"]==mh)&(df["away_team"]==ma)&(df["home_score"].isna())
+        df.loc[mask, "home_score"] = mhs
+        df.loc[mask, "away_score"] = mas
     played = df.dropna(subset=["home_score","away_score"]).sort_values("date")
     elo = {}
     for r in played.itertuples(index=False):
@@ -135,11 +142,6 @@ def load_and_build():
     ha=nn["home_score"].mean()/nn["away_score"].mean()
     wc_all=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
               (df["date"]<="2026-06-27")].copy()
-    # Merge manual results (only where the dataset hasn't caught up yet)
-    for mh, ma, mhs, mas in MANUAL_RESULTS:
-        mask = (wc_all["home_team"]==mh)&(wc_all["away_team"]==ma)&(wc_all["home_score"].isna())
-        wc_all.loc[mask, "home_score"] = mhs
-        wc_all.loc[mask, "away_score"] = mas
     upcoming = wc_all[wc_all["home_score"].isna()].copy()
     upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
     return at,de,mu,ha,elo,sorted(uni),upcoming,wc_all
@@ -306,7 +308,7 @@ with c2:
                  type="primary" if st.session_state.tab=="standings" else "secondary"):
         st.session_state.tab="standings"; st.rerun()
 with c3:
-    if st.button("👤 MY PICKS", use_container_width=True,
+    if st.button("⭐ FAVOURITES", use_container_width=True,
                  type="primary" if st.session_state.tab=="picks" else "secondary"):
         st.session_state.tab="picks"; st.rerun()
 
@@ -576,51 +578,13 @@ elif st.session_state.tab == "standings":
 elif st.session_state.tab == "picks":
     st.markdown("""
     <div class="kw-eyebrow">🏆 World Cup 2026</div>
-    <div class="kw-title">MY PICKS</div>
+    <div class="kw-title">FAVOURITES</div>
+    <div class="kw-sub">Ranked by live Elo rating — updates as results come in</div>
     """, unsafe_allow_html=True)
 
-    # Stats row
-    st.markdown("""
-    <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
-      <div class="picks-stat">
-        <div class="picks-stat-icon">🎯</div>
-        <div class="picks-stat-val">0</div>
-        <div class="picks-stat-lbl">Predicted</div>
-      </div>
-      <div class="picks-stat">
-        <div class="picks-stat-icon">📈</div>
-        <div class="picks-stat-val">17</div>
-        <div class="picks-stat-lbl">Remaining</div>
-      </div>
-      <div class="picks-stat">
-        <div class="picks-stat-icon">🏅</div>
-        <div class="picks-stat-val">0%</div>
-        <div class="picks-stat-lbl">Accuracy</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Champion prediction
-    st.markdown('<div class="sect-title">Champion Prediction</div>', unsafe_allow_html=True)
-    champ_opts = ["— Pick your champion —"] + team_list
-    champ = st.selectbox("Champion", champ_opts, label_visibility="collapsed")
-    if champ and champ != "— Pick your champion —":
-        champ_elo = elo.get(champ, ELO_S)
-        mult = round(max(1.5, 10000/champ_elo), 1)
-        st.markdown(f"""
-        <div class="champ-card">
-          <div style="font-size:2.5rem">{flag(champ)}</div>
-          <div>
-            <div class="champ-name">{champ.upper()}</div>
-            <div class="champ-sub">Your champion pick</div>
-            <div class="champ-badge">⭐ {mult}x MULTIPLIER</div>
-          </div>
-        </div>""", unsafe_allow_html=True)
-
-    # Top contenders by Elo
-    st.markdown('<div class="sect-title">Top Contenders</div>', unsafe_allow_html=True)
+    # Top contenders by Elo (manual results already feed these ratings)
     wc_elo = {t:elo.get(t,ELO_S) for g in GROUPS.values() for t in g}
-    top_cont = sorted(wc_elo.items(), key=lambda x:x[1], reverse=True)[:8]
+    top_cont = sorted(wc_elo.items(), key=lambda x:x[1], reverse=True)[:12]
     for i,(team,rating) in enumerate(top_cont):
         mult = round(max(1.5, 10000/rating), 1)
         st.markdown(f"""
@@ -648,7 +612,7 @@ st.markdown(f"""
   </div>
   <div style="text-align:center">
     <div class="nav-icon {m_active}">👤</div>
-    <div class="nav-lbl {m_active}">MY PICKS</div>
+    <div class="nav-lbl {m_active}">FAVOURITES</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
