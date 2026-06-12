@@ -31,20 +31,30 @@ FLAGS = {
     "Japan":"🇯🇵","Netherlands":"🇳🇱","Sweden":"🇸🇪","Tunisia":"🇹🇳",
 }
 
+# Official FIFA draw (Dec 5, 2025) - correct group letters
 GROUPS = {
-    "A":["Algeria","Argentina","Austria","Jordan"],
-    "B":["Australia","Paraguay","Turkey","United States"],
-    "C":["Belgium","Egypt","Iran","New Zealand"],
-    "D":["Bosnia and Herzegovina","Canada","Qatar","Switzerland"],
-    "E":["Brazil","Haiti","Morocco","Scotland"],
-    "F":["Cape Verde","Saudi Arabia","Spain","Uruguay"],
-    "G":["Colombia","DR Congo","Portugal","Uzbekistan"],
-    "H":["Croatia","England","Ghana","Panama"],
-    "I":["Curaçao","Ecuador","Germany","Ivory Coast"],
-    "J":["Czech Republic","Mexico","South Africa","South Korea"],
-    "K":["France","Iraq","Norway","Senegal"],
-    "L":["Japan","Netherlands","Sweden","Tunisia"],
+    "A":["Mexico","South Africa","South Korea","Czech Republic"],
+    "B":["Canada","Bosnia and Herzegovina","Qatar","Switzerland"],
+    "C":["Brazil","Morocco","Haiti","Scotland"],
+    "D":["United States","Paraguay","Australia","Turkey"],
+    "E":["Germany","Curaçao","Ivory Coast","Ecuador"],
+    "F":["Netherlands","Japan","Sweden","Tunisia"],
+    "G":["Belgium","Egypt","Iran","New Zealand"],
+    "H":["Spain","Cape Verde","Saudi Arabia","Uruguay"],
+    "I":["France","Senegal","Iraq","Norway"],
+    "J":["Argentina","Algeria","Austria","Jordan"],
+    "K":["Portugal","DR Congo","Uzbekistan","Colombia"],
+    "L":["England","Croatia","Ghana","Panama"],
 }
+
+# ── MANUAL RESULTS ──
+# The public dataset can lag 1-2 days behind live matches.
+# Add finished results here: (home, away, home_goals, away_goals)
+# They are used ONLY until the dataset catches up (no double counting).
+MANUAL_RESULTS = [
+    ("Mexico", "South Africa", 2, 0),
+    ("South Korea", "Czech Republic", 2, 1),
+]
 
 def compute_standings(group_teams, wc_df):
     """Compute live group standings from played WC matches."""
@@ -113,11 +123,15 @@ def load_and_build():
         at={t:v/am for t,v in na.items()}; de={t:v/dm for t,v in nd.items()}
     nn=m[m["neutral"]==False]
     ha=nn["home_score"].mean()/nn["away_score"].mean()
-    upcoming=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
-                (df["date"]<="2026-06-27")&(df["home_score"].isna())].copy()
-    upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
     wc_all=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
               (df["date"]<="2026-06-27")].copy()
+    # Merge manual results (only where the dataset hasn't caught up yet)
+    for mh, ma, mhs, mas in MANUAL_RESULTS:
+        mask = (wc_all["home_team"]==mh)&(wc_all["away_team"]==ma)&(wc_all["home_score"].isna())
+        wc_all.loc[mask, "home_score"] = mhs
+        wc_all.loc[mask, "away_score"] = mas
+    upcoming = wc_all[wc_all["home_score"].isna()].copy()
+    upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
     return at,de,mu,ha,elo,sorted(uni),upcoming,wc_all
 
 def pois(k,l): return l**k*math.exp(-l)/math.factorial(k)
@@ -404,10 +418,17 @@ elif st.session_state.tab == "standings":
         if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear(); st.rerun()
 
-    # Group selector pills
-    grp_cols = st.columns(12)
-    for i, g in enumerate("ABCDEFGHIJKL"):
-        with grp_cols[i]:
+    # Group selector pills - two rows of six (easier to tap on mobile)
+    row1 = st.columns(6)
+    for i, g in enumerate("ABCDEF"):
+        with row1[i]:
+            if st.button(g, key=f"grp_{g}",
+                         type="primary" if st.session_state.grp==g else "secondary",
+                         use_container_width=True):
+                st.session_state.grp = g; st.rerun()
+    row2 = st.columns(6)
+    for i, g in enumerate("GHIJKL"):
+        with row2[i]:
             if st.button(g, key=f"grp_{g}",
                          type="primary" if st.session_state.grp==g else "secondary",
                          use_container_width=True):
@@ -459,10 +480,29 @@ elif st.session_state.tab == "standings":
 
     st.markdown("""
     <div class="st-legend">
-      <div class="st-legend-item"><div class="st-dot" style="background:#00FF7F"></div> Advance to Round of 16</div>
-      <div class="st-legend-item"><div class="st-dot" style="background:#F5C518"></div> Third-place playoff contention</div>
+      <div class="st-legend-item"><div class="st-dot" style="background:#00FF7F"></div> Advance to Round of 32</div>
+      <div class="st-legend-item"><div class="st-dot" style="background:#F5C518"></div> Third-place contention</div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Results in this group so far
+    grp_set = set(teams_in_grp)
+    grp_played = wc_all.dropna(subset=["home_score","away_score"])
+    grp_played = grp_played[grp_played["home_team"].isin(grp_set) &
+                            grp_played["away_team"].isin(grp_set)]
+    if len(grp_played):
+        st.markdown('<div class="sect-title">Results</div>', unsafe_allow_html=True)
+        for r in grp_played.itertuples(index=False):
+            d = pd.Timestamp(r.date).strftime("%b %d")
+            st.markdown(f"""
+            <div class="sl-item">
+              <div style="font-size:0.65rem;color:#555;width:48px;">{d}</div>
+              <div class="sl-score" style="flex:1;">
+                {flag(r.home_team)} {r.home_team}
+                <span style="color:#00FF7F;margin:0 6px;">{int(r.home_score)} – {int(r.away_score)}</span>
+                {r.away_team} {flag(r.away_team)}
+              </div>
+            </div>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # MY PICKS TAB
