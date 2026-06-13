@@ -3,7 +3,7 @@ Kickwise - World Cup 2026 Predictor
 Mobile-first Streamlit app matching the Figma design.
 Run: venv/bin/streamlit run app.py
 """
-import json, math, os, random, bisect
+import math, random, bisect
 from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
@@ -54,19 +54,16 @@ GROUPS = {
 }
 
 # ── MANUAL RESULTS ──
-# Loaded from data/manual_results.json, which is auto-updated by
-# .github/workflows/sync_results.yml every hour via the martj42 CSV.
-# To add a result manually while the dataset lags, edit the JSON file directly.
-def _load_manual_results():
-    path = os.path.join(os.path.dirname(__file__), "data", "manual_results.json")
-    try:
-        with open(path) as f:
-            data = json.load(f)
-        return [(r["home"], r["away"], r["home_score"], r["away_score"], r["date"]) for r in data]
-    except (FileNotFoundError, KeyError, json.JSONDecodeError):
-        return []
-
-MANUAL_RESULTS = _load_manual_results()
+# The public dataset can lag 1-2 days behind live matches.
+# Add finished results here: (home, away, home_goals, away_goals, date_YYYY-MM-DD)
+# They are injected directly into wc_all so predictions move to results immediately
+# and group standings update with 3pts win / 1pt draw / 0pt loss.
+MANUAL_RESULTS = [
+    ("Mexico", "South Africa", 2, 0, "2026-06-11"),        # Group A
+    ("South Korea", "Czech Republic", 2, 1, "2026-06-12"), # Group A
+    ("United States", "Paraguay", 3, 1, "2026-06-12"),     # Group D
+    ("Canada", "Bosnia and Herzegovina", 1, 1, "2026-06-12"), # Group B
+]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
 # Source: Al Jazeera / Sky Sports (confirmed GMT). Display in BJT (UTC+8).
