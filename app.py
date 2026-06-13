@@ -4,6 +4,7 @@ Mobile-first Streamlit app matching the Figma design.
 Run: venv/bin/streamlit run app.py
 """
 import math, random, bisect
+from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
 try:
@@ -63,6 +64,103 @@ MANUAL_RESULTS = [
     ("Canada", "Bosnia and Herzegovina", 1, 1, "2026-06-12"), # Group B
     ("United States", "Paraguay", 3, 1, "2026-06-12"),     # Group D
 ]
+
+# ── KICKOFF TIMES (UTC) ──────────────────────────────────────
+# Source: Al Jazeera / Sky Sports (confirmed GMT). Display in BJT (UTC+8).
+MATCH_TIMES_UTC = {
+    # Group A
+    ("Mexico","South Africa"):                  "2026-06-11 19:00",
+    ("South Korea","Czech Republic"):           "2026-06-12 02:00",
+    ("Czech Republic","South Africa"):          "2026-06-18 16:00",
+    ("Mexico","South Korea"):                   "2026-06-19 01:00",
+    ("Czech Republic","Mexico"):                "2026-06-25 01:00",
+    ("South Africa","South Korea"):             "2026-06-25 01:00",
+    # Group B
+    ("Canada","Bosnia and Herzegovina"):        "2026-06-12 19:00",
+    ("Qatar","Switzerland"):                    "2026-06-13 19:00",
+    ("Switzerland","Bosnia and Herzegovina"):   "2026-06-18 19:00",
+    ("Canada","Qatar"):                         "2026-06-18 22:00",
+    ("Switzerland","Canada"):                   "2026-06-24 19:00",
+    ("Bosnia and Herzegovina","Qatar"):         "2026-06-24 19:00",
+    # Group C
+    ("Brazil","Morocco"):                       "2026-06-13 22:00",
+    ("Haiti","Scotland"):                       "2026-06-14 01:00",
+    ("Scotland","Morocco"):                     "2026-06-19 22:00",
+    ("Brazil","Haiti"):                         "2026-06-20 00:30",
+    ("Scotland","Brazil"):                      "2026-06-24 22:00",
+    ("Morocco","Haiti"):                        "2026-06-24 22:00",
+    # Group D
+    ("United States","Paraguay"):               "2026-06-12 01:00",
+    ("Australia","Turkey"):                     "2026-06-14 04:00",
+    ("United States","Australia"):              "2026-06-19 19:00",
+    ("Turkey","Paraguay"):                      "2026-06-20 03:00",
+    ("Turkey","United States"):                 "2026-06-26 02:00",
+    ("Paraguay","Australia"):                   "2026-06-26 02:00",
+    # Group E
+    ("Germany","Curaçao"):                      "2026-06-14 17:00",
+    ("Ivory Coast","Ecuador"):                  "2026-06-14 23:00",
+    ("Germany","Ivory Coast"):                  "2026-06-20 20:00",
+    ("Ecuador","Curaçao"):                      "2026-06-21 03:00",
+    ("Ecuador","Germany"):                      "2026-06-25 20:00",
+    ("Curaçao","Ivory Coast"):                  "2026-06-25 20:00",
+    # Group F
+    ("Netherlands","Japan"):                    "2026-06-14 20:00",
+    ("Sweden","Tunisia"):                       "2026-06-15 02:00",
+    ("Netherlands","Sweden"):                   "2026-06-20 17:00",
+    ("Tunisia","Japan"):                        "2026-06-21 04:00",
+    ("Japan","Sweden"):                         "2026-06-25 23:00",
+    ("Tunisia","Netherlands"):                  "2026-06-25 23:00",
+    # Group G
+    ("Belgium","Egypt"):                        "2026-06-15 19:00",
+    ("Iran","New Zealand"):                     "2026-06-16 01:00",
+    ("Belgium","Iran"):                         "2026-06-21 19:00",
+    ("New Zealand","Egypt"):                    "2026-06-22 01:00",
+    ("Egypt","Iran"):                           "2026-06-27 03:00",
+    ("New Zealand","Belgium"):                  "2026-06-27 03:00",
+    # Group H
+    ("Spain","Cape Verde"):                     "2026-06-15 16:00",
+    ("Saudi Arabia","Uruguay"):                 "2026-06-15 22:00",
+    ("Spain","Saudi Arabia"):                   "2026-06-21 16:00",
+    ("Uruguay","Cape Verde"):                   "2026-06-21 22:00",
+    ("Cape Verde","Saudi Arabia"):              "2026-06-27 00:00",
+    ("Uruguay","Spain"):                        "2026-06-27 00:00",
+    # Group I
+    ("France","Senegal"):                       "2026-06-16 19:00",
+    ("Iraq","Norway"):                          "2026-06-16 22:00",
+    ("France","Iraq"):                          "2026-06-22 21:00",
+    ("Norway","Senegal"):                       "2026-06-23 00:00",
+    ("Norway","France"):                        "2026-06-26 19:00",
+    ("Senegal","Iraq"):                         "2026-06-26 19:00",
+    # Group J
+    ("Argentina","Algeria"):                    "2026-06-17 01:00",
+    ("Austria","Jordan"):                       "2026-06-17 04:00",
+    ("Argentina","Austria"):                    "2026-06-22 17:00",
+    ("Jordan","Algeria"):                       "2026-06-23 03:00",
+    ("Algeria","Austria"):                      "2026-06-28 02:00",
+    ("Jordan","Argentina"):                     "2026-06-28 02:00",
+    # Group K
+    ("Portugal","DR Congo"):                    "2026-06-17 17:00",
+    ("Uzbekistan","Colombia"):                  "2026-06-18 02:00",
+    ("Portugal","Uzbekistan"):                  "2026-06-23 17:00",
+    ("Colombia","DR Congo"):                    "2026-06-24 02:00",
+    ("Colombia","Portugal"):                    "2026-06-27 23:30",
+    ("DR Congo","Uzbekistan"):                  "2026-06-27 23:30",
+    # Group L
+    ("England","Croatia"):                      "2026-06-17 20:00",
+    ("Ghana","Panama"):                         "2026-06-17 23:00",
+    ("England","Ghana"):                        "2026-06-23 20:00",
+    ("Panama","Croatia"):                       "2026-06-23 23:00",
+    ("Panama","England"):                       "2026-06-27 21:00",
+    ("Croatia","Ghana"):                        "2026-06-27 21:00",
+}
+
+def get_bjt_time(h, a):
+    """Return kickoff time in Beijing Time (UTC+8) as 'Mon DD · HH:MM BJT'."""
+    utc_str = MATCH_TIMES_UTC.get((h, a))
+    if not utc_str:
+        return None
+    dt_bjt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M") + timedelta(hours=8)
+    return dt_bjt.strftime("%b %d · %H:%M BJT")
 
 def compute_standings(group_teams, wc_df):
     """Compute live group standings from played WC matches."""
@@ -394,7 +492,8 @@ if st.session_state.tab == "predict":
             h, a = row["home_team"], row["away_team"]
             if h not in at or a not in at: continue
             date_str = row["date_fmt"]
-            time_str = f"{date_str} · BJT"
+            bjt = get_bjt_time(h, a)
+            time_str = bjt if bjt else f"{date_str} · BJT"
             btn_key = f"fx_{h}_{a}"
             # Check if this match has a result
             match_result = wc_all[
