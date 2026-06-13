@@ -61,8 +61,8 @@ GROUPS = {
 MANUAL_RESULTS = [
     ("Mexico", "South Africa", 2, 0),        # Jun 11 - Group A
     ("South Korea", "Czech Republic", 2, 1), # Jun 11 - Group A
-    # Jun 12 results - add below as they finish:
-    # ("Canada", "Bosnia and Herzegovina", X, X),
+    ("Canada", "Bosnia and Herzegovina", 1, 1),# Jun 12 results - add below as they finish:
+    ("United States", "Paraguay", 3, 1),# ("Canada", "Bosnia and Herzegovina", X, X),
     # ("United States", "Paraguay", X, X),
 ]
 
