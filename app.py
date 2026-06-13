@@ -54,16 +54,14 @@ GROUPS = {
 
 # ── MANUAL RESULTS ──
 # The public dataset can lag 1-2 days behind live matches.
-# Add finished results here: (home, away, home_goals, away_goals)
-# They are used ONLY until the dataset catches up (no double counting).
-# Add results here as matches finish (until dataset catches up ~24hrs later)
-# Format: (home_team, away_team, home_goals, away_goals)
+# Add finished results here: (home, away, home_goals, away_goals, date_YYYY-MM-DD)
+# They are injected directly into wc_all so predictions move to results immediately
+# and group standings update with 3pts win / 1pt draw / 0pt loss.
 MANUAL_RESULTS = [
-    ("Mexico", "South Africa", 2, 0),        # Jun 11 - Group A
-    ("South Korea", "Czech Republic", 2, 1), # Jun 11 - Group A
-    ("Canada", "Bosnia and Herzegovina", 1, 1),# Jun 12 results - add below as they finish:
-    ("United States", "Paraguay", 3, 1),# ("Canada", "Bosnia and Herzegovina", X, X),
-    # ("United States", "Paraguay", X, X),
+    ("Mexico", "South Africa", 2, 0, "2026-06-11"),        # Group A
+    ("South Korea", "Czech Republic", 2, 1, "2026-06-11"), # Group A
+    ("Canada", "Bosnia and Herzegovina", 1, 1, "2026-06-12"), # Group B
+    ("United States", "Paraguay", 3, 1, "2026-06-12"),     # Group D
 ]
 
 def compute_standings(group_teams, wc_df):
@@ -104,7 +102,7 @@ def load_and_build():
     # Fill in manual results FIRST so they feed the model too:
     # Elo updates, attack/defense ratings, and the favourites ranking
     # all see these matches as played (only where dataset lags behind).
-    for mh, ma, mhs, mas in MANUAL_RESULTS:
+    for mh, ma, mhs, mas, mdate in MANUAL_RESULTS:
         mask = (df["home_team"]==mh)&(df["away_team"]==ma)&(df["home_score"].isna())
         df.loc[mask, "home_score"] = mhs
         df.loc[mask, "away_score"] = mas
@@ -142,6 +140,26 @@ def load_and_build():
     ha=nn["home_score"].mean()/nn["away_score"].mean()
     wc_all=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
               (df["date"]<="2026-06-27")].copy()
+
+    # Guarantee every MANUAL_RESULTS entry is in wc_all with scores.
+    # This handles CSV lag (row exists but score still NaN) AND missing rows
+    # (CSV hasn't added the fixture yet), ensuring:
+    #   - match moves from prediction to results immediately
+    #   - standings update correctly (W=3pts, D=1pt, L=0pts)
+    for mh, ma, mhs, mas, mdate in MANUAL_RESULTS:
+        mask = (wc_all["home_team"]==mh) & (wc_all["away_team"]==ma)
+        if mask.any():
+            wc_all.loc[mask, "home_score"] = float(mhs)
+            wc_all.loc[mask, "away_score"] = float(mas)
+        else:
+            new_row = pd.DataFrame([{
+                "date": pd.Timestamp(mdate),
+                "home_team": mh, "away_team": ma,
+                "home_score": float(mhs), "away_score": float(mas),
+                "tournament": "FIFA World Cup", "neutral": False,
+            }])
+            wc_all = pd.concat([wc_all, new_row], ignore_index=True)
+
     upcoming = wc_all[wc_all["home_score"].isna()].copy()
     upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
     return at,de,mu,ha,elo,sorted(uni),upcoming,wc_all
@@ -376,7 +394,7 @@ if st.session_state.tab == "predict":
             h, a = row["home_team"], row["away_team"]
             if h not in at or a not in at: continue
             date_str = row["date_fmt"]
-            time_str = f"{date_str} · 19:00"
+            time_str = f"{date_str} · BJT"
             btn_key = f"fx_{h}_{a}"
             # Check if this match has a result
             match_result = wc_all[
