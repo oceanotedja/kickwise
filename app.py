@@ -194,9 +194,13 @@ html,body,[class*="css"]{
 }
 #MainMenu,footer,header{visibility:hidden;}
 .block-container{padding:0 1rem 5rem!important;max-width:430px!important;margin:auto;}
-.stRadio>div{display:flex!important;gap:8px!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding:2px 0!important;background:transparent!important;}
-.stRadio label{background:#1c1c1c!important;border-radius:999px!important;padding:6px 16px!important;font-size:0.78rem!important;font-weight:600!important;color:#888!important;white-space:nowrap!important;cursor:pointer!important;border:none!important;}
+.stRadio>div{display:flex!important;gap:6px!important;flex-wrap:nowrap!important;overflow-x:auto!important;padding:2px 0!important;background:transparent!important;-webkit-overflow-scrolling:touch;}
+.stRadio label{background:#1c1c1c!important;border-radius:999px!important;padding:6px 14px!important;font-size:0.78rem!important;font-weight:600!important;color:#888!important;white-space:nowrap!important;cursor:pointer!important;border:none!important;}
 .stRadio label:has(input:checked){background:#00FF7F!important;color:#000!important;}
+/* Compact single-letter group pills: small circles, all 12 fit one row */
+.grp-radio .stRadio>div{gap:5px!important;justify-content:space-between!important;overflow-x:visible!important;}
+.grp-radio .stRadio label{padding:0!important;width:26px!important;height:26px!important;min-width:26px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:0.72rem!important;}
+.grp-radio .stRadio label>div:first-child{display:none!important;}  /* hide the radio dot */
 .stSelectbox>div>div{background:#1c1c1c!important;border:1px solid #2a2a2a!important;border-radius:12px!important;color:#fff!important;}
 div[data-testid="stVerticalBlock"]{gap:0!important;}
 
@@ -278,13 +282,12 @@ div[data-testid="stVerticalBlock"]{gap:0!important;}
 .sect-title{font-size:0.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin:1rem 0 0.5rem;}
 
 /* bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #1e1e1e;z-index:999;display:flex;justify-content:space-around;padding:10px 0 14px;}
-.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0 20px;}
-.nav-icon{font-size:1.2rem;color:#444;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #1e1e1e;z-index:999;display:flex;justify-content:space-around;padding:8px 0 12px;max-width:430px;margin:auto;}
+.nav-link{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;flex:1;padding:4px 0;}
+.nav-icon{font-size:1.35rem;color:#555;line-height:1;}
 .nav-icon.active{color:#00FF7F;}
-.nav-lbl{font-size:0.58rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.08em;}
+.nav-lbl{font-size:0.58rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.06em;}
 .nav-lbl.active{color:#00FF7F;}
-.nav-active-bg{background:#1c2e1c;border-radius:12px;padding:6px 20px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -296,6 +299,13 @@ with st.spinner(""):
 if "tab" not in st.session_state: st.session_state.tab = "predict"
 if "grp" not in st.session_state: st.session_state.grp = "A"
 if "pred_match" not in st.session_state: st.session_state.pred_match = None
+if "last_qp" not in st.session_state: st.session_state.last_qp = None
+
+# Bottom-nav links set ?tab=... in the URL; apply it once per change
+qp_tab = st.query_params.get("tab")
+if qp_tab in ("predict", "standings", "picks") and qp_tab != st.session_state.last_qp:
+    st.session_state.tab = qp_tab
+    st.session_state.last_qp = qp_tab
 
 # nav buttons via query or columns
 c1,c2,c3 = st.columns(3)
@@ -486,21 +496,17 @@ elif st.session_state.tab == "standings":
         if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear(); st.rerun()
 
-    # Group selector pills - two rows of six (easier to tap on mobile)
-    row1 = st.columns(6)
-    for i, g in enumerate("ABCDEF"):
-        with row1[i]:
-            if st.button(g, key=f"grp_{g}",
-                         type="primary" if st.session_state.grp==g else "secondary",
-                         use_container_width=True):
-                st.session_state.grp = g; st.rerun()
-    row2 = st.columns(6)
-    for i, g in enumerate("GHIJKL"):
-        with row2[i]:
-            if st.button(g, key=f"grp_{g}",
-                         type="primary" if st.session_state.grp==g else "secondary",
-                         use_container_width=True):
-                st.session_state.grp = g; st.rerun()
+    # Group selector - 12 compact circular pills, all on one row (no scroll)
+    groups_list = list("ABCDEFGHIJKL")
+    st.markdown('<div class="grp-radio">', unsafe_allow_html=True)
+    sel = st.radio("Group", groups_list,
+                   index=groups_list.index(st.session_state.grp),
+                   horizontal=True, label_visibility="collapsed",
+                   key="grp_radio")
+    st.markdown('</div>', unsafe_allow_html=True)
+    if sel != st.session_state.grp:
+        st.session_state.grp = sel
+        st.rerun()
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     grp = st.session_state.grp
@@ -602,17 +608,17 @@ s_active = "active" if tab=="standings" else ""
 m_active = "active" if tab=="picks" else ""
 st.markdown(f"""
 <div class="bottom-nav">
-  <div style="text-align:center">
+  <a class="nav-link" href="?tab=predict" target="_self">
     <div class="nav-icon {p_active}">⚡</div>
     <div class="nav-lbl {p_active}">PREDICT</div>
-  </div>
-  <div style="text-align:center">
+  </a>
+  <a class="nav-link" href="?tab=standings" target="_self">
     <div class="nav-icon {s_active}">📊</div>
     <div class="nav-lbl {s_active}">STANDINGS</div>
-  </div>
-  <div style="text-align:center">
-    <div class="nav-icon {m_active}">👤</div>
+  </a>
+  <a class="nav-link" href="?tab=picks" target="_self">
+    <div class="nav-icon {m_active}">⭐</div>
     <div class="nav-lbl {m_active}">FAVOURITES</div>
-  </div>
+  </a>
 </div>
 """, unsafe_allow_html=True)
