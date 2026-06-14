@@ -61,8 +61,11 @@ GROUPS = {
 MANUAL_RESULTS = [
     ("Mexico", "South Africa", 2, 0, "2026-06-11"),        # Group A
     ("South Korea", "Czech Republic", 2, 1, "2026-06-12"), # Group A
-    ("United States", "Paraguay", 3, 1, "2026-06-12"),     # Group D
+    ("United States", "Paraguay", 4, 1, "2026-06-12"),     # Group D
     ("Canada", "Bosnia and Herzegovina", 1, 1, "2026-06-12"), # Group B
+    ("Qatar", "Switzerland", 1, 1, "2026-06-13"),          # Group B
+    ("Brazil", "Morocco", 1, 1, "2026-06-13"),             # Group C
+    ("Haiti", "Scotland", 0, 1, "2026-06-14"),             # Group C
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
