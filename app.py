@@ -197,13 +197,15 @@ def tw(t):
 def flag(t): return FLAGS.get(t,"🏳️")
 
 @st.cache_data(ttl=6*3600, show_spinner=False)
-def load_and_build():
+def load_and_build(manual_results):
+    # manual_results is passed as an argument so the cache key changes
+    # whenever we add a new result — no stale "upcoming" after updates.
     df = pd.read_csv(DATA_URL)
     df["date"] = pd.to_datetime(df["date"])
     # Fill in manual results FIRST so they feed the model too:
     # Elo updates, attack/defense ratings, and the favourites ranking
     # all see these matches as played (only where dataset lags behind).
-    for mh, ma, mhs, mas, mdate in MANUAL_RESULTS:
+    for mh, ma, mhs, mas, mdate in manual_results:
         mask = (df["home_team"]==mh)&(df["away_team"]==ma)&(df["home_score"].isna())
         df.loc[mask, "home_score"] = mhs
         df.loc[mask, "away_score"] = mas
@@ -247,7 +249,7 @@ def load_and_build():
     # (CSV hasn't added the fixture yet), ensuring:
     #   - match moves from prediction to results immediately
     #   - standings update correctly (W=3pts, D=1pt, L=0pts)
-    for mh, ma, mhs, mas, mdate in MANUAL_RESULTS:
+    for mh, ma, mhs, mas, mdate in manual_results:
         mask = (wc_all["home_team"]==mh) & (wc_all["away_team"]==ma)
         if mask.any():
             wc_all.loc[mask, "home_score"] = float(mhs)
@@ -412,7 +414,7 @@ div[data-testid="stVerticalBlock"]{gap:0!important;}
 
 # ── Load ────────────────────────────────────────────────────
 with st.spinner(""):
-    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build()
+    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS))
 
 # ── Navigation state ────────────────────────────────────────
 if "tab" not in st.session_state: st.session_state.tab = "predict"
@@ -498,29 +500,14 @@ if st.session_state.tab == "predict":
             bjt = get_bjt_time(h, a)
             time_str = bjt if bjt else f"{date_str} · BJT"
             btn_key = f"fx_{h}_{a}"
-            # Check if this match has a result
+            # Skip finished matches — they belong in the Results tab only
             match_result = wc_all[
                 (wc_all["home_team"]==h) & (wc_all["away_team"]==a)
             ].dropna(subset=["home_score","away_score"])
-            has_result = len(match_result) > 0
+            if len(match_result) > 0:
+                continue
 
-            if has_result:
-                hs = int(match_result.iloc[0]["home_score"])
-                as_ = int(match_result.iloc[0]["away_score"])
-                winner_h = "color:#00FF7F;font-weight:900" if hs > as_ else ("color:#aaa" if hs < as_ else "color:#F5C518")
-                winner_a = "color:#00FF7F;font-weight:900" if as_ > hs else ("color:#aaa" if as_ < hs else "color:#F5C518")
-                st.markdown(f"""
-                <div class="fx-card" style="margin-bottom:0;border-color:#1a3a1a;">
-                  <div style="flex:1;">
-                    <div class="fx-time">FT · {date_str}</div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
-                      <div style="font-size:0.88rem;font-weight:700;{winner_h}">{flag(h)} {h}</div>
-                      <div style="font-size:1.1rem;font-weight:900;color:#fff;margin:0 10px;">{hs} – {as_}</div>
-                      <div style="font-size:0.88rem;font-weight:700;{winner_a}">{a} {flag(a)}</div>
-                    </div>
-                  </div>
-                </div>""", unsafe_allow_html=True)
-            else:
+            if True:
                 col1, col2 = st.columns([3,1])
                 with col1:
                     st.markdown(f"""
