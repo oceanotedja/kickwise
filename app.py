@@ -66,6 +66,11 @@ MANUAL_RESULTS = [
     ("Qatar", "Switzerland", 1, 1, "2026-06-13"),          # Group B
     ("Brazil", "Morocco", 1, 1, "2026-06-13"),             # Group C
     ("Haiti", "Scotland", 0, 1, "2026-06-14"),             # Group C
+    ("Australia", "Turkey", 2, 0, "2026-06-14"),           # Group D
+    ("Germany", "Curaçao", 7, 1, "2026-06-14"),            # Group E
+    ("Netherlands", "Japan", 2, 2, "2026-06-14"),          # Group F
+    ("Ivory Coast", "Ecuador", 1, 0, "2026-06-14"),        # Group E
+    ("Sweden", "Tunisia", 5, 1, "2026-06-15"),             # Group F
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
@@ -241,14 +246,19 @@ def load_and_build(manual_results):
         at={t:v/am for t,v in na.items()}; de={t:v/dm for t,v in nd.items()}
     nn=m[m["neutral"]==False]
     ha=nn["home_score"].mean()/nn["away_score"].mean()
-    wc_all=df[(df["tournament"]=="FIFA World Cup")&(df["date"]>="2026-06-01")&
-              (df["date"]<="2026-06-27")].copy()
+    # Build wc_all from MATCH_TIMES_UTC — authoritative fixture list, no CSV
+    # lag or team-name mismatches. Adding to MANUAL_RESULTS instantly moves a
+    # match out of Upcoming and into Results / Standings.
+    fixture_rows = []
+    for (h, a), utc_str in MATCH_TIMES_UTC.items():
+        fixture_rows.append({
+            "date": pd.Timestamp(utc_str.split()[0]),
+            "home_team": h, "away_team": a,
+            "home_score": float("nan"), "away_score": float("nan"),
+            "tournament": "FIFA World Cup", "neutral": True,
+        })
+    wc_all = pd.DataFrame(fixture_rows)
 
-    # Guarantee every MANUAL_RESULTS entry is in wc_all with scores.
-    # This handles CSV lag (row exists but score still NaN) AND missing rows
-    # (CSV hasn't added the fixture yet), ensuring:
-    #   - match moves from prediction to results immediately
-    #   - standings update correctly (W=3pts, D=1pt, L=0pts)
     for mh, ma, mhs, mas, mdate in manual_results:
         mask = (wc_all["home_team"]==mh) & (wc_all["away_team"]==ma)
         if mask.any():
@@ -259,13 +269,13 @@ def load_and_build(manual_results):
                 "date": pd.Timestamp(mdate),
                 "home_team": mh, "away_team": ma,
                 "home_score": float(mhs), "away_score": float(mas),
-                "tournament": "FIFA World Cup", "neutral": False,
+                "tournament": "FIFA World Cup", "neutral": True,
             }])
             wc_all = pd.concat([wc_all, new_row], ignore_index=True)
 
     upcoming = wc_all[wc_all["home_score"].isna()].copy()
-    upcoming["date_fmt"]=upcoming["date"].dt.strftime("%b %d")
-    return at,de,mu,ha,elo,sorted(uni),upcoming,wc_all
+    upcoming["date_fmt"] = upcoming["date"].dt.strftime("%b %d")
+    return at, de, mu, ha, elo, sorted(uni), upcoming, wc_all
 
 def pois(k,l): return l**k*math.exp(-l)/math.factorial(k)
 def tau(x,y,l,m,r):
@@ -490,40 +500,39 @@ if st.session_state.tab == "predict":
                          horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # Show fixtures list
+    # Show fixtures list — sorted by kickoff time (earliest first).
+    # upcoming rows always have a MATCH_TIMES_UTC entry since wc_all is built from it.
     if not upcoming.empty:
+        upcoming_sorted = upcoming.iloc[
+            upcoming.apply(
+                lambda r: MATCH_TIMES_UTC.get((r["home_team"], r["away_team"]), "9999"),
+                axis=1
+            ).argsort().values
+        ]
         shown = 0
-        for _, row in upcoming.iterrows():
+        for _, row in upcoming_sorted.iterrows():
             h, a = row["home_team"], row["away_team"]
             if h not in at or a not in at: continue
             date_str = row["date_fmt"]
             bjt = get_bjt_time(h, a)
             time_str = bjt if bjt else f"{date_str} · BJT"
             btn_key = f"fx_{h}_{a}"
-            # Skip finished matches — they belong in the Results tab only
-            match_result = wc_all[
-                (wc_all["home_team"]==h) & (wc_all["away_team"]==a)
-            ].dropna(subset=["home_score","away_score"])
-            if len(match_result) > 0:
-                continue
-
-            if True:
-                col1, col2 = st.columns([3,1])
-                with col1:
-                    st.markdown(f"""
-                    <div class="fx-card" style="margin-bottom:0">
-                      <div>
-                        <div class="fx-time">{time_str}</div>
-                        <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:3px;">
-                          {flag(h)} {h} <span style="color:#444;font-size:0.75rem;margin:0 4px;">vs</span> {flag(a)} {a}
-                        </div>
-                      </div>
-                    </div>""", unsafe_allow_html=True)
-                with col2:
-                    if st.button("⚡ PREDICT", key=btn_key, use_container_width=True):
-                        st.session_state.pred_match = (h, a)
-                        st.session_state.tab = "predict_detail"
-                        st.rerun()
+            col1, col2 = st.columns([3,1])
+            with col1:
+                st.markdown(f"""
+                <div class="fx-card" style="margin-bottom:0">
+                  <div>
+                    <div class="fx-time">{time_str}</div>
+                    <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:3px;">
+                      {flag(h)} {h} <span style="color:#444;font-size:0.75rem;margin:0 4px;">vs</span> {flag(a)} {a}
+                    </div>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+            with col2:
+                if st.button("⚡ PREDICT", key=btn_key, use_container_width=True):
+                    st.session_state.pred_match = (h, a)
+                    st.session_state.tab = "predict_detail"
+                    st.rerun()
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
             shown += 1
             if shown >= 20: break
