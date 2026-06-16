@@ -1,0 +1,39 @@
+name: Update World Cup Results
+
+on:
+  schedule:
+    # Runs at 02:00, 06:00, and 22:00 UTC daily.
+    # 02:00 UTC — catches late-night matches (22:00–23:00 UTC kickoffs)
+    # 06:00 UTC — catches early-morning matches (01:00–04:00 UTC kickoffs)
+    # 22:00 UTC — catches afternoon matches (16:00–20:00 UTC kickoffs)
+    - cron: '0 2,6,22 * * *'
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch and update results
+        run: python scripts/update_results.py
+
+      - name: Commit and push if app.py changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet app.py; then
+            echo "No changes — nothing to commit."
+            exit 0
+          fi
+          MSG=$(cat /tmp/wc_commit_msg.txt 2>/dev/null || echo "Update World Cup results")
+          git add app.py
+          git commit -m "$MSG"
+          git push
