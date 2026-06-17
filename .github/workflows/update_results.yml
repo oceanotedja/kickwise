@@ -2,11 +2,10 @@ name: Update World Cup Results
 
 on:
   schedule:
-    # Runs at 02:00, 06:00, and 22:00 UTC daily.
-    # 02:00 UTC — catches late-night matches (22:00–23:00 UTC kickoffs)
-    # 06:00 UTC — catches early-morning matches (01:00–04:00 UTC kickoffs)
-    # 22:00 UTC — catches afternoon matches (16:00–20:00 UTC kickoffs)
-    - cron: '0 2,6,22 * * *'
+    # All times in BJT (UTC+8). GitHub Actions cron runs in UTC.
+    - cron: '15 22 * * *'  #  6:15 BJT
+    - cron: '15 1 * * *'   #  9:15 BJT
+    - cron: '15 4 * * *'   # 12:15 BJT
   workflow_dispatch:  # allow manual trigger from GitHub UI
 
 jobs:
