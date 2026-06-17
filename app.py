@@ -504,7 +504,7 @@ if st.session_state.tab == "predict":
         st.stop()
 
     # Round filter
-    round_sel = st.radio("Round", ["Group Stage","Round of 16","Quarter Finals","Semi Finals","Final"],
+    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
                          horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
