@@ -79,6 +79,9 @@ MANUAL_RESULTS = [
     ("Iraq", "Norway", 1, 4, "2026-06-16"),                # Group I
     ("Argentina", "Algeria", 3, 0, "2026-06-17"),          # Group J
     ("Austria", "Jordan", 3, 1, "2026-06-17"),             # Group J
+    ("Portugal", "DR Congo", 1, 1, "2026-06-17"),  # Group K
+    ("England", "Croatia", 4, 2, "2026-06-17"),  # Group L
+
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
