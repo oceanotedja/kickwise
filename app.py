@@ -86,6 +86,7 @@ MANUAL_RESULTS = [
     ("Czech Republic", "South Africa", 1, 1, "2026-06-18"), # Group A
     ("Switzerland", "Bosnia and Herzegovina", 4, 1, "2026-06-18"), # Group B
     ("Canada", "Qatar", 6, 0, "2026-06-18"),               # Group B
+    ("Mexico", "South Korea", 1, 0, "2026-06-19"),         # Group A
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
