@@ -90,6 +90,9 @@ MANUAL_RESULTS = [
     ("United States", "Australia", 2, 0, "2026-06-19"),  # Group D
     ("Scotland", "Morocco", 0, 1, "2026-06-19"),  # Group C
     ("Brazil", "Haiti", 3, 0, "2026-06-20"),  # Group C
+    ("Turkey", "Paraguay", 0, 1, "2026-06-20"),  # Group D
+    ("Germany", "Ivory Coast", 2, 1, "2026-06-20"),  # Group E
+    ("Netherlands", "Sweden", 5, 1, "2026-06-20"),  # Group F
 
 ]
 
