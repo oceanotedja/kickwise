@@ -93,6 +93,12 @@ MANUAL_RESULTS = [
     ("Turkey", "Paraguay", 0, 1, "2026-06-20"),            # Group D
     ("Netherlands", "Sweden", 5, 1, "2026-06-20"),         # Group F
     ("Germany", "Ivory Coast", 2, 1, "2026-06-20"),        # Group E
+    ("Ecuador", "Curaçao", 0, 0, "2026-06-21"),            # Group E
+    ("Tunisia", "Japan", 0, 4, "2026-06-21"),              # Group F
+    ("Spain", "Saudi Arabia", 4, 0, "2026-06-21"),         # Group H
+    ("Belgium", "Iran", 0, 0, "2026-06-21"),               # Group G
+    ("Uruguay", "Cape Verde", 2, 2, "2026-06-21"),         # Group H
+    ("New Zealand", "Egypt", 1, 3, "2026-06-22"),          # Group G
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
