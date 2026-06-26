@@ -118,6 +118,8 @@ MANUAL_RESULTS = [
     ("Japan", "Sweden", 1, 1, "2026-06-25"),  # Group F
     ("Tunisia", "Netherlands", 1, 3, "2026-06-25"),  # Group F
     ("Paraguay", "Australia", 0, 0, "2026-06-26"),  # Group D
+    ("Norway", "France", 1, 4, "2026-06-26"),  # Group I
+    ("Senegal", "Iraq", 5, 0, "2026-06-26"),  # Group I
 
 ]
 
