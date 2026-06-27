@@ -124,6 +124,8 @@ MANUAL_RESULTS = [
     ("Cape Verde", "Saudi Arabia", 0, 0, "2026-06-27"),  # Group H
     ("Uruguay", "Spain", 0, 1, "2026-06-27"),  # Group H
     ("Egypt", "Iran", 1, 1, "2026-06-27"),  # Group G
+    ("Panama", "England", 0, 2, "2026-06-27"),  # Group L
+    ("Croatia", "Ghana", 2, 1, "2026-06-27"),  # Group L
 
 ]
 
