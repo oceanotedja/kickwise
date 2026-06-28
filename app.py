@@ -22,13 +22,24 @@ TW={"FIFA World Cup":1.5,"UEFA Euro":1.4,"Copa América":1.4,
     "CONCACAF Gold Cup":1.2,"FIFA World Cup qualification":1.1,
     "UEFA Nations League":1.1,"Friendly":0.4}
 
-ROUND_DATE_RANGES = {
-    "Group Stage":    ("2026-06-11", "2026-06-28"),
-    "Round of 32":    ("2026-07-01", "2026-07-08"),
-    "Round of 16":    ("2026-07-11", "2026-07-14"),
-    "Quarter Finals": ("2026-07-17", "2026-07-18"),
-    "Semi Finals":    ("2026-07-21", "2026-07-22"),
-    "Final":          ("2026-07-26", "2026-07-26"),
+KNOCKOUT_ROUNDS = {
+    # Round of 32
+    ("South Africa", "Canada"):              "Round of 32",
+    ("Brazil", "Japan"):                     "Round of 32",
+    ("Germany", "Paraguay"):                 "Round of 32",
+    ("Netherlands", "Morocco"):              "Round of 32",
+    ("Ivory Coast", "Norway"):               "Round of 32",
+    ("France", "Sweden"):                    "Round of 32",
+    ("Mexico", "Ecuador"):                   "Round of 32",
+    ("England", "DR Congo"):                 "Round of 32",
+    ("Belgium", "Senegal"):                  "Round of 32",
+    ("United States", "Bosnia and Herzegovina"): "Round of 32",
+    ("Spain", "Austria"):                    "Round of 32",
+    ("Portugal", "Croatia"):                 "Round of 32",
+    ("Switzerland", "Algeria"):              "Round of 32",
+    ("Australia", "Egypt"):                  "Round of 32",
+    ("Argentina", "Cape Verde"):             "Round of 32",
+    ("Colombia", "Ghana"):                   "Round of 32",
 }
 
 FLAGS = {
@@ -231,22 +242,22 @@ MATCH_TIMES_UTC = {
     ("Panama","England"):                       "2026-06-27 21:00",
     ("Croatia","Ghana"):                        "2026-06-27 21:00",
     # Round of 32
-    ("Mexico","Bosnia and Herzegovina"):        "2026-07-01 20:00",
-    ("Germany","Austria"):                      "2026-07-01 23:00",
-    ("France","South Africa"):                  "2026-07-02 20:00",
-    ("Spain","Norway"):                         "2026-07-02 23:00",
-    ("Switzerland","Ghana"):                    "2026-07-03 20:00",
-    ("Argentina","Egypt"):                      "2026-07-03 23:00",
-    ("Colombia","Sweden"):                      "2026-07-04 20:00",
-    ("England","Ecuador"):                      "2026-07-04 23:00",
-    ("Netherlands","Morocco"):                  "2026-07-05 20:00",
-    ("Belgium","Canada"):                       "2026-07-05 23:00",
-    ("Brazil","Japan"):                         "2026-07-06 20:00",
-    ("United States","Senegal"):                "2026-07-06 23:00",
-    ("Portugal","Paraguay"):                    "2026-07-07 20:00",
-    ("Croatia","Algeria"):                      "2026-07-07 23:00",
-    ("Cape Verde","DR Congo"):                  "2026-07-08 20:00",
-    ("Australia","Ivory Coast"):                "2026-07-08 23:00",
+    ("South Africa","Canada"):                  "2026-06-28 19:00",
+    ("Brazil","Japan"):                         "2026-06-29 17:00",
+    ("Germany","Paraguay"):                     "2026-06-29 20:30",
+    ("Netherlands","Morocco"):                  "2026-06-30 01:00",
+    ("Ivory Coast","Norway"):                   "2026-06-30 17:00",
+    ("France","Sweden"):                        "2026-06-30 21:00",
+    ("Mexico","Ecuador"):                       "2026-07-01 01:00",
+    ("England","DR Congo"):                     "2026-07-01 16:00",
+    ("Belgium","Senegal"):                      "2026-07-01 20:00",
+    ("United States","Bosnia and Herzegovina"): "2026-07-02 00:00",
+    ("Spain","Austria"):                        "2026-07-02 19:00",
+    ("Portugal","Croatia"):                     "2026-07-02 23:00",
+    ("Switzerland","Algeria"):                  "2026-07-03 03:00",
+    ("Australia","Egypt"):                      "2026-07-03 18:00",
+    ("Argentina","Cape Verde"):                 "2026-07-03 22:00",
+    ("Colombia","Ghana"):                       "2026-07-05 01:30",
 }
 
 def get_bjt_time(h, a):
@@ -562,10 +573,11 @@ if st.session_state.tab == "predict":
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     def filter_by_round(df, sel):
-        if sel not in ROUND_DATE_RANGES:
-            return df
-        sd, ed = ROUND_DATE_RANGES[sel]
-        return df[(df["date"] >= pd.Timestamp(sd)) & (df["date"] <= pd.Timestamp(ed))]
+        def get_round(row):
+            return KNOCKOUT_ROUNDS.get((row["home_team"], row["away_team"]), "Group Stage")
+        if sel == "Group Stage":
+            return df[df.apply(lambda r: get_round(r) == "Group Stage", axis=1)]
+        return df[df.apply(lambda r: get_round(r) == sel, axis=1)]
 
     if view_mode == "📋 Results":
         # Show played matches filtered by round
