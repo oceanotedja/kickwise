@@ -300,9 +300,9 @@ def tw(t):
 def flag(t): return FLAGS.get(t,"🏳️")
 
 @st.cache_data(ttl=6*3600, show_spinner=False)
-def load_and_build(manual_results):
-    # manual_results is passed as an argument so the cache key changes
-    # whenever we add a new result — no stale "upcoming" after updates.
+def load_and_build(manual_results, fixture_key):
+    # Both manual_results and fixture_key are cache arguments so the cache
+    # busts whenever results OR the fixture schedule changes.
     df = pd.read_csv(DATA_URL)
     df["date"] = pd.to_datetime(df["date"])
     # Fill in manual results FIRST so they feed the model too:
@@ -522,7 +522,8 @@ div[data-testid="stVerticalBlock"]{gap:0!important;}
 
 # ── Load ────────────────────────────────────────────────────
 with st.spinner(""):
-    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS))
+    _fixture_key = tuple(sorted(MATCH_TIMES_UTC.items()))
+    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS), _fixture_key)
 
 # ── Navigation state ────────────────────────────────────────
 if "tab" not in st.session_state: st.session_state.tab = "predict"
@@ -618,7 +619,6 @@ if st.session_state.tab == "predict":
         shown = 0
         for _, row in upcoming_sorted.iterrows():
             h, a = row["home_team"], row["away_team"]
-            if h not in at or a not in at: continue
             date_str = row["date_fmt"]
             bjt = get_bjt_time(h, a)
             time_str = bjt if bjt else f"{date_str} · BJT"
