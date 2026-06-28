@@ -22,6 +22,15 @@ TW={"FIFA World Cup":1.5,"UEFA Euro":1.4,"Copa América":1.4,
     "CONCACAF Gold Cup":1.2,"FIFA World Cup qualification":1.1,
     "UEFA Nations League":1.1,"Friendly":0.4}
 
+ROUND_DATE_RANGES = {
+    "Group Stage":    ("2026-06-11", "2026-06-28"),
+    "Round of 32":    ("2026-07-01", "2026-07-08"),
+    "Round of 16":    ("2026-07-11", "2026-07-14"),
+    "Quarter Finals": ("2026-07-17", "2026-07-18"),
+    "Semi Finals":    ("2026-07-21", "2026-07-22"),
+    "Final":          ("2026-07-26", "2026-07-26"),
+}
+
 FLAGS = {
     "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
     "Australia":"🇦🇺","Paraguay":"🇵🇾","Turkey":"🇹🇷","United States":"🇺🇸",
@@ -130,6 +139,7 @@ MANUAL_RESULTS = [
     ("DR Congo", "Uzbekistan", 3, 1, "2026-06-27"),  # Group K
     ("Algeria", "Austria", 3, 3, "2026-06-28"),  # Group J
     ("Jordan", "Argentina", 1, 3, "2026-06-28"),  # Group J
+    ("Turkey", "United States", 0, 3, "2026-06-26"),  # Group D
 
 ]
 
@@ -220,6 +230,23 @@ MATCH_TIMES_UTC = {
     ("Panama","Croatia"):                       "2026-06-23 23:00",
     ("Panama","England"):                       "2026-06-27 21:00",
     ("Croatia","Ghana"):                        "2026-06-27 21:00",
+    # Round of 32
+    ("Mexico","Bosnia and Herzegovina"):        "2026-07-01 20:00",
+    ("Germany","Austria"):                      "2026-07-01 23:00",
+    ("France","South Africa"):                  "2026-07-02 20:00",
+    ("Spain","Norway"):                         "2026-07-02 23:00",
+    ("Switzerland","Ghana"):                    "2026-07-03 20:00",
+    ("Argentina","Egypt"):                      "2026-07-03 23:00",
+    ("Colombia","Sweden"):                      "2026-07-04 20:00",
+    ("England","Ecuador"):                      "2026-07-04 23:00",
+    ("Netherlands","Morocco"):                  "2026-07-05 20:00",
+    ("Belgium","Canada"):                       "2026-07-05 23:00",
+    ("Brazil","Japan"):                         "2026-07-06 20:00",
+    ("United States","Senegal"):                "2026-07-06 23:00",
+    ("Portugal","Paraguay"):                    "2026-07-07 20:00",
+    ("Croatia","Algeria"):                      "2026-07-07 23:00",
+    ("Cape Verde","DR Congo"):                  "2026-07-08 20:00",
+    ("Australia","Ivory Coast"):                "2026-07-08 23:00",
 }
 
 def get_bjt_time(h, a):
@@ -528,13 +555,24 @@ if st.session_state.tab == "predict":
     # Tab: Upcoming vs Results
     view_mode = st.radio("View", ["⚽ Upcoming", "📋 Results"],
                          horizontal=True, label_visibility="collapsed")
+
+    # Round filter — applies to both Upcoming and Results
+    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
+                         index=1, horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+    def filter_by_round(df, sel):
+        if sel not in ROUND_DATE_RANGES:
+            return df
+        sd, ed = ROUND_DATE_RANGES[sel]
+        return df[(df["date"] >= pd.Timestamp(sd)) & (df["date"] <= pd.Timestamp(ed))]
+
     if view_mode == "📋 Results":
-        # Show all played matches
+        # Show played matches filtered by round
         played_matches = wc_all.dropna(subset=["home_score","away_score"]).sort_values("date", ascending=False)
+        played_matches = filter_by_round(played_matches, round_sel)
         if played_matches.empty:
-            st.info("No results yet — check back after matches finish.")
+            st.info("No results yet for this round — check back after matches finish.")
         else:
             for _, row in played_matches.iterrows():
                 h, a = row["home_team"], row["away_team"]
@@ -555,11 +593,6 @@ if st.session_state.tab == "predict":
                 </div>""", unsafe_allow_html=True)
         st.stop()
 
-    # Round filter
-    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
-                         horizontal=True, label_visibility="collapsed")
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
     # Show fixtures list — sorted by kickoff time (earliest first).
     # upcoming rows always have a MATCH_TIMES_UTC entry since wc_all is built from it.
     if not upcoming.empty:
@@ -569,6 +602,7 @@ if st.session_state.tab == "predict":
                 axis=1
             ).argsort().values
         ]
+        upcoming_sorted = filter_by_round(upcoming_sorted, round_sel)
         shown = 0
         for _, row in upcoming_sorted.iterrows():
             h, a = row["home_team"], row["away_team"]
