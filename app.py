@@ -158,6 +158,9 @@ MANUAL_RESULTS = [
     ("Ivory Coast", "Norway", 1, 2, "2026-06-30"),  # Group E
     ("France", "Sweden", 3, 0, "2026-06-30"),  # Group I
     ("Mexico", "Ecuador", 2, 0, "2026-07-01"),  # Group A
+    ("England", "DR Congo", 2, 1, "2026-07-01"),  # Group L
+    ("Belgium", "Senegal", 3, 2, "2026-07-01"),  # Group G
+
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
