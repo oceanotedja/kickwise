@@ -22,6 +22,26 @@ TW={"FIFA World Cup":1.5,"UEFA Euro":1.4,"Copa América":1.4,
     "CONCACAF Gold Cup":1.2,"FIFA World Cup qualification":1.1,
     "UEFA Nations League":1.1,"Friendly":0.4}
 
+KNOCKOUT_ROUNDS = {
+    # Round of 32
+    ("South Africa", "Canada"):              "Round of 32",
+    ("Brazil", "Japan"):                     "Round of 32",
+    ("Germany", "Paraguay"):                 "Round of 32",
+    ("Netherlands", "Morocco"):              "Round of 32",
+    ("Ivory Coast", "Norway"):               "Round of 32",
+    ("France", "Sweden"):                    "Round of 32",
+    ("Mexico", "Ecuador"):                   "Round of 32",
+    ("England", "DR Congo"):                 "Round of 32",
+    ("Belgium", "Senegal"):                  "Round of 32",
+    ("United States", "Bosnia and Herzegovina"): "Round of 32",
+    ("Spain", "Austria"):                    "Round of 32",
+    ("Portugal", "Croatia"):                 "Round of 32",
+    ("Switzerland", "Algeria"):              "Round of 32",
+    ("Australia", "Egypt"):                  "Round of 32",
+    ("Argentina", "Cape Verde"):             "Round of 32",
+    ("Colombia", "Ghana"):                   "Round of 32",
+}
+
 FLAGS = {
     "Argentina":"🇦🇷","Algeria":"🇩🇿","Austria":"🇦🇹","Jordan":"🇯🇴",
     "Australia":"🇦🇺","Paraguay":"🇵🇾","Turkey":"🇹🇷","United States":"🇺🇸",
@@ -87,18 +107,57 @@ MANUAL_RESULTS = [
     ("Switzerland", "Bosnia and Herzegovina", 4, 1, "2026-06-18"), # Group B
     ("Canada", "Qatar", 6, 0, "2026-06-18"),               # Group B
     ("Mexico", "South Korea", 1, 0, "2026-06-19"),         # Group A
-    ("United States", "Australia", 2, 0, "2026-06-19"),    # Group D
-    ("Scotland", "Morocco", 0, 1, "2026-06-19"),           # Group C
-    ("Brazil", "Haiti", 3, 0, "2026-06-20"),               # Group C
-    ("Turkey", "Paraguay", 0, 1, "2026-06-20"),            # Group D
-    ("Netherlands", "Sweden", 5, 1, "2026-06-20"),         # Group F
-    ("Germany", "Ivory Coast", 2, 1, "2026-06-20"),        # Group E
-    ("Ecuador", "Curaçao", 0, 0, "2026-06-21"),            # Group E
-    ("Tunisia", "Japan", 0, 4, "2026-06-21"),              # Group F
-    ("Spain", "Saudi Arabia", 4, 0, "2026-06-21"),         # Group H
-    ("Belgium", "Iran", 0, 0, "2026-06-21"),               # Group G
-    ("Uruguay", "Cape Verde", 2, 2, "2026-06-21"),         # Group H
-    ("New Zealand", "Egypt", 1, 3, "2026-06-22"),          # Group G
+    ("United States", "Australia", 2, 0, "2026-06-19"),  # Group D
+    ("Scotland", "Morocco", 0, 1, "2026-06-19"),  # Group C
+    ("Brazil", "Haiti", 3, 0, "2026-06-20"),  # Group C
+    ("Turkey", "Paraguay", 0, 1, "2026-06-20"),  # Group D
+    ("Germany", "Ivory Coast", 2, 1, "2026-06-20"),  # Group E
+    ("Netherlands", "Sweden", 5, 1, "2026-06-20"),  # Group F
+    ("Ecuador", "Curaçao", 0, 0, "2026-06-21"),  # Group E
+    ("Tunisia", "Japan", 0, 4, "2026-06-21"),  # Group F
+    ("Belgium", "Iran", 0, 0, "2026-06-21"),  # Group G
+    ("Spain", "Saudi Arabia", 4, 0, "2026-06-21"),  # Group H
+    ("Uruguay", "Cape Verde", 2, 2, "2026-06-21"),  # Group H
+    ("New Zealand", "Egypt", 1, 3, "2026-06-22"),  # Group G
+    ("Argentina", "Austria", 2, 0, "2026-06-22"),  # Group J
+    ("France", "Iraq", 3, 0, "2026-06-22"),  # Group I
+    ("Norway", "Senegal", 3, 2, "2026-06-23"),  # Group I
+    ("Jordan", "Algeria", 1, 2, "2026-06-23"),  # Group J
+    ("Portugal", "Uzbekistan", 5, 0, "2026-06-23"),  # Group K
+    ("England", "Ghana", 0, 0, "2026-06-23"),  # Group L
+    ("Panama", "Croatia", 0, 1, "2026-06-23"),  # Group L
+    ("Colombia", "DR Congo", 1, 0, "2026-06-24"),  # Group K
+    ("Switzerland", "Canada", 2, 1, "2026-06-24"),  # Group B
+    ("Bosnia and Herzegovina", "Qatar", 3, 1, "2026-06-24"),  # Group B
+    ("Scotland", "Brazil", 0, 3, "2026-06-24"),  # Group C
+    ("Morocco", "Haiti", 4, 2, "2026-06-24"),  # Group C
+    ("Czech Republic", "Mexico", 0, 3, "2026-06-25"),  # Group A
+    ("South Africa", "South Korea", 1, 0, "2026-06-25"),  # Group A
+    ("Ecuador", "Germany", 2, 1, "2026-06-25"),  # Group E
+    ("Curaçao", "Ivory Coast", 0, 2, "2026-06-25"),  # Group E
+    ("Japan", "Sweden", 1, 1, "2026-06-25"),  # Group F
+    ("Tunisia", "Netherlands", 1, 3, "2026-06-25"),  # Group F
+    ("Paraguay", "Australia", 0, 0, "2026-06-26"),  # Group D
+    ("Norway", "France", 1, 4, "2026-06-26"),  # Group I
+    ("Senegal", "Iraq", 5, 0, "2026-06-26"),  # Group I
+    ("New Zealand", "Belgium", 1, 5, "2026-06-27"),  # Group G
+    ("Cape Verde", "Saudi Arabia", 0, 0, "2026-06-27"),  # Group H
+    ("Uruguay", "Spain", 0, 1, "2026-06-27"),  # Group H
+    ("Egypt", "Iran", 1, 1, "2026-06-27"),  # Group G
+    ("Panama", "England", 0, 2, "2026-06-27"),  # Group L
+    ("Croatia", "Ghana", 2, 1, "2026-06-27"),  # Group L
+    ("Colombia", "Portugal", 0, 0, "2026-06-27"),  # Group K
+    ("DR Congo", "Uzbekistan", 3, 1, "2026-06-27"),  # Group K
+    ("Algeria", "Austria", 3, 3, "2026-06-28"),  # Group J
+    ("Jordan", "Argentina", 1, 3, "2026-06-28"),  # Group J
+    ("Turkey", "United States", 0, 3, "2026-06-26"),  # Group D
+    ("South Africa", "Canada", 0, 1, "2026-06-28"),  # Group A
+    ("Brazil", "Japan", 2, 1, "2026-06-29"),  # Group C
+    ("Germany", "Paraguay", 1, 1, "2026-06-29"),  # Group E
+    ("Netherlands", "Morocco", 1, 1, "2026-06-30"),  # Group F
+    ("Ivory Coast", "Norway", 1, 2, "2026-06-30"),  # Group E
+    ("France", "Sweden", 3, 0, "2026-06-30"),  # Group I
+    ("Mexico", "Ecuador", 2, 0, "2026-07-01"),  # Group A
 ]
 
 # ── KICKOFF TIMES (UTC) ──────────────────────────────────────
@@ -188,6 +247,23 @@ MATCH_TIMES_UTC = {
     ("Panama","Croatia"):                       "2026-06-23 23:00",
     ("Panama","England"):                       "2026-06-27 21:00",
     ("Croatia","Ghana"):                        "2026-06-27 21:00",
+    # Round of 32
+    ("South Africa","Canada"):                  "2026-06-28 19:00",
+    ("Brazil","Japan"):                         "2026-06-29 17:00",
+    ("Germany","Paraguay"):                     "2026-06-29 20:30",
+    ("Netherlands","Morocco"):                  "2026-06-30 01:00",
+    ("Ivory Coast","Norway"):                   "2026-06-30 17:00",
+    ("France","Sweden"):                        "2026-06-30 21:00",
+    ("Mexico","Ecuador"):                       "2026-07-01 01:00",
+    ("England","DR Congo"):                     "2026-07-01 16:00",
+    ("Belgium","Senegal"):                      "2026-07-01 20:00",
+    ("United States","Bosnia and Herzegovina"): "2026-07-02 00:00",
+    ("Spain","Austria"):                        "2026-07-02 19:00",
+    ("Portugal","Croatia"):                     "2026-07-02 23:00",
+    ("Switzerland","Algeria"):                  "2026-07-03 03:00",
+    ("Australia","Egypt"):                      "2026-07-03 18:00",
+    ("Argentina","Cape Verde"):                 "2026-07-03 22:00",
+    ("Colombia","Ghana"):                       "2026-07-05 01:30",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
@@ -309,9 +385,9 @@ def tw(t):
 def flag(t): return FLAGS.get(t,"🏳️")
 
 @st.cache_data(ttl=6*3600, show_spinner=False)
-def load_and_build(manual_results):
-    # manual_results is passed as an argument so the cache key changes
-    # whenever we add a new result — no stale "upcoming" after updates.
+def load_and_build(manual_results, fixture_key):
+    # Both manual_results and fixture_key are cache arguments so the cache
+    # busts whenever results OR the fixture schedule changes.
     df = pd.read_csv(DATA_URL)
     df["date"] = pd.to_datetime(df["date"])
     # Fill in manual results FIRST so they feed the model too:
@@ -544,7 +620,8 @@ div[data-testid="stVerticalBlock"]{gap:0!important;}
 
 # ── Load ────────────────────────────────────────────────────
 with st.spinner(""):
-    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS))
+    _fixture_key = tuple(sorted(MATCH_TIMES_UTC.items()))
+    at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS), _fixture_key)
 
 # ── Navigation state ────────────────────────────────────────
 if "tab" not in st.session_state: st.session_state.tab = "predict"
@@ -596,13 +673,25 @@ if st.session_state.tab == "predict":
     # Tab: Upcoming vs Results
     view_mode = st.radio("View", ["⚽ Upcoming", "📋 Results"],
                          horizontal=True, label_visibility="collapsed")
+
+    # Round filter — applies to both Upcoming and Results
+    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
+                         index=1, horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+    def filter_by_round(df, sel):
+        def get_round(row):
+            return KNOCKOUT_ROUNDS.get((row["home_team"], row["away_team"]), "Group Stage")
+        if sel == "Group Stage":
+            return df[df.apply(lambda r: get_round(r) == "Group Stage", axis=1)]
+        return df[df.apply(lambda r: get_round(r) == sel, axis=1)]
+
     if view_mode == "📋 Results":
-        # Show all played matches
+        # Show played matches filtered by round
         played_matches = wc_all.dropna(subset=["home_score","away_score"]).sort_values("date", ascending=False)
+        played_matches = filter_by_round(played_matches, round_sel)
         if played_matches.empty:
-            st.info("No results yet — check back after matches finish.")
+            st.info("No results yet for this round — check back after matches finish.")
         else:
             for _, row in played_matches.iterrows():
                 h, a = row["home_team"], row["away_team"]
@@ -623,11 +712,6 @@ if st.session_state.tab == "predict":
                 </div>""", unsafe_allow_html=True)
         st.stop()
 
-    # Round filter
-    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
-                         horizontal=True, label_visibility="collapsed")
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
     # Show fixtures list — sorted by kickoff time (earliest first).
     # upcoming rows always have a MATCH_TIMES_UTC entry since wc_all is built from it.
     if not upcoming.empty:
@@ -637,10 +721,10 @@ if st.session_state.tab == "predict":
                 axis=1
             ).argsort().values
         ]
+        upcoming_sorted = filter_by_round(upcoming_sorted, round_sel)
         shown = 0
         for _, row in upcoming_sorted.iterrows():
             h, a = row["home_team"], row["away_team"]
-            if h not in at or a not in at: continue
             date_str = row["date_fmt"]
             bjt = get_bjt_time(h, a)
             time_str = bjt if bjt else f"{date_str} · BJT"
