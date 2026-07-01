@@ -190,6 +190,85 @@ MATCH_TIMES_UTC = {
     ("Croatia","Ghana"):                        "2026-06-27 21:00",
 }
 
+# ── KNOCKOUT BRACKET ─────────────────────────────────────────
+# Official Round of 32 draw per FIFA regulations Annex C (group
+# winners/runners-up + the 8 qualifying third-place teams' fixed
+# combination table). Bracket progression (R16/QF/SF/Final) per
+# the official match-number template (matches 73-102).
+R32_MATCHES = {
+    73: ("South Africa", "Canada"),
+    74: ("Germany", "Paraguay"),
+    75: ("Netherlands", "Morocco"),
+    76: ("Brazil", "Japan"),
+    77: ("France", "Sweden"),
+    78: ("Ivory Coast", "Norway"),
+    79: ("Mexico", "Ecuador"),
+    80: ("England", "DR Congo"),
+    81: ("United States", "Bosnia and Herzegovina"),
+    82: ("Belgium", "Senegal"),
+    83: ("Portugal", "Croatia"),
+    84: ("Spain", "Austria"),
+    85: ("Switzerland", "Algeria"),
+    86: ("Argentina", "Cape Verde"),
+    87: ("Colombia", "Ghana"),
+    88: ("Australia", "Egypt"),
+}
+R32_ORDER = [74, 77, 73, 75, 83, 84, 81, 82, 76, 78, 79, 80, 86, 88, 85, 87]
+# Matches already decided (source: FIFA match centre)
+R32_RESULT = {73: "Canada", 74: "Paraguay", 75: "Morocco",
+              76: "Brazil", 77: "France", 78: "Norway"}
+R16_PAIRS = {89: (74, 77), 90: (73, 75), 91: (76, 78), 92: (79, 80),
+             93: (83, 84), 94: (81, 82), 95: (86, 88), 96: (85, 87)}
+R16_ORDER = [89, 90, 91, 92, 93, 94, 95, 96]
+QF_PAIRS = {97: (89, 90), 98: (93, 94), 99: (91, 92), 100: (95, 96)}
+QF_ORDER = [97, 98, 99, 100]
+SF_PAIRS = {101: (97, 98), 102: (99, 100)}
+
+def resolve_match(mid, at, de, mu, ha, elo, cache):
+    """Return (team1, team2, winner, win_prob, is_actual) for a bracket match,
+    recursively resolving earlier rounds and using the model to project
+    winners where the real result isn't in yet."""
+    if mid in cache:
+        return cache[mid]
+    if mid in R32_MATCHES:
+        h, a = R32_MATCHES[mid]
+    else:
+        pairs = R16_PAIRS.get(mid) or QF_PAIRS.get(mid) or SF_PAIRS.get(mid)
+        h = resolve_match(pairs[0], at, de, mu, ha, elo, cache)[2]
+        a = resolve_match(pairs[1], at, de, mu, ha, elo, cache)[2]
+    if mid in R32_RESULT:
+        res = (h, a, R32_RESULT[mid], 1.0, True)
+    else:
+        pw, pd_, pb, *_ = predict(h, a, at, de, mu, ha, elo)
+        edge = pw / (pw + pb) if (pw + pb) > 0 else 0.5
+        winner = h if edge >= 0.5 else a
+        res = (h, a, winner, max(edge, 1 - edge), False)
+    cache[mid] = res
+    return res
+
+def render_bracket_box(h, a, winner, prob, is_actual):
+    h_style = "color:#00FF7F;font-weight:900" if winner == h else "color:#888"
+    a_style = "color:#00FF7F;font-weight:900" if winner == a else "color:#888"
+    tag = "FT" if is_actual else f"{prob*100:.0f}%"
+    tag_color = "#00FF7F" if is_actual else "#F5C518"
+    return f"""<div class="bt-box">
+      <div class="bt-team" style="{h_style}">{flag(h)} {h}</div>
+      <div class="bt-tag" style="color:{tag_color}">{tag}</div>
+      <div class="bt-team" style="{a_style}">{flag(a)} {a}</div>
+    </div>"""
+
+def render_bracket_node(mid, cache):
+    """Recursively render a match and its two feeder matches as a nested
+    tree, so each round's connecting lines line up automatically via flexbox."""
+    pairs = R16_PAIRS.get(mid) or QF_PAIRS.get(mid) or SF_PAIRS.get(mid)
+    h, a, winner, prob, is_actual = cache[mid]
+    box = render_bracket_box(h, a, winner, prob, is_actual)
+    if pairs is None:
+        return box
+    c1 = f'<div class="bt-slot">{render_bracket_node(pairs[0], cache)}</div>'
+    c2 = f'<div class="bt-slot">{render_bracket_node(pairs[1], cache)}</div>'
+    return f'<div class="bt-row"><div class="bt-pair">{c1}{c2}</div>{box}</div>'
+
 def get_bjt_time(h, a):
     """Return kickoff time in Beijing Time (UTC+8) as 'Mon DD · HH:MM BJT'."""
     utc_str = MATCH_TIMES_UTC.get((h, a))
@@ -361,6 +440,7 @@ html,body,[class*="css"]{
 .grp-radio .stRadio label{padding:0!important;width:26px!important;height:26px!important;min-width:26px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:0.72rem!important;}
 .grp-radio .stRadio label>div:first-child{display:none!important;}  /* hide the radio dot */
 .stSelectbox>div>div{background:#1c1c1c!important;border:1px solid #2a2a2a!important;border-radius:12px!important;color:#fff!important;}
+div[data-testid="stButton"] button{font-size:0.62rem!important;padding:0.4rem 0.2rem!important;line-height:1.15!important;white-space:nowrap!important;}
 div[data-testid="stVerticalBlock"]{gap:0!important;}
 
 /* page header */
@@ -440,6 +520,18 @@ div[data-testid="stVerticalBlock"]{gap:0!important;}
 .cont-mult{font-size:0.9rem;font-weight:700;color:#00FF7F;}
 .sect-title{font-size:0.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin:1rem 0 0.5rem;}
 
+/* bracket tree */
+.bt-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:8px 4px 28px;}
+.bt-tree{display:inline-flex;}
+.bt-row{display:flex;align-items:center;}
+.bt-pair{display:flex;flex-direction:column;gap:14px;position:relative;padding-right:18px;}
+.bt-pair::before{content:'';position:absolute;top:0;bottom:0;right:0;width:1px;background:#2a2a2a;}
+.bt-slot{position:relative;padding-right:18px;}
+.bt-slot::after{content:'';position:absolute;top:50%;right:0;width:18px;height:1px;background:#2a2a2a;}
+.bt-box{background:#161616;border:1px solid #222;border-radius:10px;padding:8px 10px;width:132px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.bt-team{font-size:0.66rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#888;}
+.bt-tag{font-size:0.55rem;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:0.04em;}
+
 /* bottom nav */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #1e1e1e;z-index:999;display:flex;justify-content:space-around;padding:8px 0 12px;max-width:430px;margin:auto;}
 .nav-link{display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;flex:1;padding:4px 0;}
@@ -462,12 +554,12 @@ if "last_qp" not in st.session_state: st.session_state.last_qp = None
 
 # Bottom-nav links set ?tab=... in the URL; apply it once per change
 qp_tab = st.query_params.get("tab")
-if qp_tab in ("predict", "standings", "picks") and qp_tab != st.session_state.last_qp:
+if qp_tab in ("predict", "standings", "bracket", "tree", "picks") and qp_tab != st.session_state.last_qp:
     st.session_state.tab = qp_tab
     st.session_state.last_qp = qp_tab
 
 # nav buttons via query or columns
-c1,c2,c3 = st.columns(3)
+c1,c2,c3,c4,c5 = st.columns(5)
 with c1:
     if st.button("⚡ PREDICT", use_container_width=True,
                  type="primary" if st.session_state.tab=="predict" else "secondary"):
@@ -477,6 +569,14 @@ with c2:
                  type="primary" if st.session_state.tab=="standings" else "secondary"):
         st.session_state.tab="standings"; st.rerun()
 with c3:
+    if st.button("🏆 BRACKET", use_container_width=True,
+                 type="primary" if st.session_state.tab=="bracket" else "secondary"):
+        st.session_state.tab="bracket"; st.rerun()
+with c4:
+    if st.button("🌳 TREE", use_container_width=True,
+                 type="primary" if st.session_state.tab=="tree" else "secondary"):
+        st.session_state.tab="tree"; st.rerun()
+with c5:
     if st.button("⭐ FAVOURITES", use_container_width=True,
                  type="primary" if st.session_state.tab=="picks" else "secondary"):
         st.session_state.tab="picks"; st.rerun()
@@ -723,6 +823,107 @@ elif st.session_state.tab == "standings":
             </div>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
+# BRACKET TAB
+# ════════════════════════════════════════════════════════════
+elif st.session_state.tab == "bracket":
+    st.markdown("""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">BRACKET</div>
+    <div class="kw-sub">Official knockout draw · undecided ties projected by Kickwise AI</div>
+    """, unsafe_allow_html=True)
+
+    cache = {}
+    for mid in R32_ORDER + R16_ORDER + QF_ORDER + [101, 102]:
+        resolve_match(mid, at, de, mu, ha, elo, cache)
+    pw, pd_, pb, *_ = predict(cache[101][2], cache[102][2], at, de, mu, ha, elo)
+    edge = pw / (pw + pb) if (pw + pb) > 0 else 0.5
+    champion = cache[101][2] if edge >= 0.5 else cache[102][2]
+    champ_prob = max(edge, 1 - edge)
+
+    st.markdown(f"""
+    <div class="champ-card">
+      <div style="font-size:2.2rem;">{flag(champion)}</div>
+      <div>
+        <div class="champ-name">{champion}</div>
+        <div class="champ-sub">Projected champion</div>
+        <div class="champ-badge">🏆 {champ_prob*100:.0f}% in the final</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    def render_round(title, mids):
+        st.markdown(f'<div class="sl-title">{title}</div>', unsafe_allow_html=True)
+        for mid in mids:
+            h, a, winner, prob, is_actual = cache[mid]
+            h_style = "color:#00FF7F;font-weight:900" if winner == h else "color:#888"
+            a_style = "color:#00FF7F;font-weight:900" if winner == a else "color:#888"
+            tag = "FT" if is_actual else f"Projected {prob*100:.0f}%"
+            tag_style = "color:#00FF7F" if is_actual else "color:#F5C518"
+            st.markdown(f"""
+            <div class="sl-item" style="flex-direction:column;align-items:stretch;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="{h_style}">{flag(h)} {h}</div>
+                <div style="font-size:0.6rem;font-weight:700;{tag_style}">{tag}</div>
+                <div style="{a_style}">{a} {flag(a)}</div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+    render_round("Round of 32", R32_ORDER)
+    render_round("Round of 16", R16_ORDER)
+    render_round("Quarter Finals", QF_ORDER)
+    render_round("Semi Finals", [101, 102])
+
+    fh, fa, fwinner, fprob, _ = (cache[101][2], cache[102][2], champion, champ_prob, False)
+    st.markdown('<div class="sl-title">Final</div>', unsafe_allow_html=True)
+    fh_style = "color:#00FF7F;font-weight:900" if fwinner == fh else "color:#888"
+    fa_style = "color:#00FF7F;font-weight:900" if fwinner == fa else "color:#888"
+    st.markdown(f"""
+    <div class="sl-item" style="flex-direction:column;align-items:stretch;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="{fh_style}">{flag(fh)} {fh}</div>
+        <div style="font-size:0.6rem;font-weight:700;color:#F5C518;">Projected {fprob*100:.0f}%</div>
+        <div style="{fa_style}">{fa} {flag(fa)}</div>
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# BRACKET TREE TAB
+# ════════════════════════════════════════════════════════════
+elif st.session_state.tab == "tree":
+    st.markdown("""
+    <div class="kw-eyebrow">🏆 World Cup 2026</div>
+    <div class="kw-title">BRACKET TREE</div>
+    <div class="kw-sub">Round of 32 → Final · scroll sideways · undecided ties projected by Kickwise AI</div>
+    """, unsafe_allow_html=True)
+
+    cache = {}
+    for mid in R32_ORDER + R16_ORDER + QF_ORDER + [101, 102]:
+        resolve_match(mid, at, de, mu, ha, elo, cache)
+    pw, pd_, pb, *_ = predict(cache[101][2], cache[102][2], at, de, mu, ha, elo)
+    edge = pw / (pw + pb) if (pw + pb) > 0 else 0.5
+    champion = cache[101][2] if edge >= 0.5 else cache[102][2]
+    champ_prob = max(edge, 1 - edge)
+
+    st.markdown(f"""
+    <div class="champ-card">
+      <div style="font-size:2.2rem;">{flag(champion)}</div>
+      <div>
+        <div class="champ-name">{champion}</div>
+        <div class="champ-sub">Projected champion</div>
+        <div class="champ-badge">🏆 {champ_prob*100:.0f}% in the final</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    fh, fa = cache[101][2], cache[102][2]
+    final_box = render_bracket_box(fh, fa, champion, champ_prob, False)
+    c1 = f'<div class="bt-slot">{render_bracket_node(101, cache)}</div>'
+    c2 = f'<div class="bt-slot">{render_bracket_node(102, cache)}</div>'
+    tree_html = f'<div class="bt-row"><div class="bt-pair">{c1}{c2}</div>{final_box}</div>'
+    st.markdown(f'<div class="bt-scroll"><div class="bt-tree">{tree_html}</div></div>',
+                unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
 # MY PICKS TAB
 # ════════════════════════════════════════════════════════════
 elif st.session_state.tab == "picks":
@@ -749,6 +950,8 @@ elif st.session_state.tab == "picks":
 tab = st.session_state.tab
 p_active = "active" if tab in ("predict","predict_detail") else ""
 s_active = "active" if tab=="standings" else ""
+b_active = "active" if tab=="bracket" else ""
+t_active = "active" if tab=="tree" else ""
 m_active = "active" if tab=="picks" else ""
 st.markdown(f"""
 <div class="bottom-nav">
@@ -759,6 +962,14 @@ st.markdown(f"""
   <a class="nav-link" href="?tab=standings" target="_self">
     <div class="nav-icon {s_active}">📊</div>
     <div class="nav-lbl {s_active}">STANDINGS</div>
+  </a>
+  <a class="nav-link" href="?tab=bracket" target="_self">
+    <div class="nav-icon {b_active}">🏆</div>
+    <div class="nav-lbl {b_active}">BRACKET</div>
+  </a>
+  <a class="nav-link" href="?tab=tree" target="_self">
+    <div class="nav-icon {t_active}">🌳</div>
+    <div class="nav-lbl {t_active}">TREE</div>
   </a>
   <a class="nav-link" href="?tab=picks" target="_self">
     <div class="nav-icon {m_active}">⭐</div>

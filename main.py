@@ -105,5 +105,4 @@ if __name__ == "__main__":
     match = predict("Brazil", "England")
     show(match)
 
-    pip install pandas
-python predictor_step2.py
+
