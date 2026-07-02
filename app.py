@@ -300,7 +300,22 @@ QF_PAIRS = {97: (89, 90), 98: (93, 94), 99: (91, 92), 100: (95, 96)}
 QF_ORDER = [97, 98, 99, 100]
 SF_PAIRS = {101: (97, 98), 102: (99, 100)}
 
-def resolve_match(mid, at, de, mu, ha, elo, cache):
+def played_winner(h, a, played_lookup):
+    """Look up a finished score for h-vs-a in wc_all (either home/away order)
+    and return the winner, or None if unplayed/undecided (e.g. still level)."""
+    if (h, a) in played_lookup:
+        hs, as_ = played_lookup[(h, a)]
+        if hs > as_: return h
+        if as_ > hs: return a
+        return None
+    if (a, h) in played_lookup:
+        as_, hs = played_lookup[(a, h)]
+        if hs > as_: return h
+        if as_ > hs: return a
+        return None
+    return None
+
+def resolve_match(mid, at, de, mu, ha, elo, cache, played_lookup):
     """Return (team1, team2, winner, win_prob, is_actual) for a bracket match,
     recursively resolving earlier rounds and using the model to project
     winners where the real result isn't in yet."""
@@ -310,9 +325,16 @@ def resolve_match(mid, at, de, mu, ha, elo, cache):
         h, a = R32_MATCHES[mid]
     else:
         pairs = R16_PAIRS.get(mid) or QF_PAIRS.get(mid) or SF_PAIRS.get(mid)
-        h = resolve_match(pairs[0], at, de, mu, ha, elo, cache)[2]
-        a = resolve_match(pairs[1], at, de, mu, ha, elo, cache)[2]
-    if mid in R32_RESULT:
+        h = resolve_match(pairs[0], at, de, mu, ha, elo, cache, played_lookup)[2]
+        a = resolve_match(pairs[1], at, de, mu, ha, elo, cache, played_lookup)[2]
+    # Prefer the live result from wc_all (kept in sync via MANUAL_RESULTS) so
+    # newly finished knockout matches show up as FT without a second manual
+    # edit to R32_RESULT; that dict remains a fallback for penalty-shootout
+    # results a plain score comparison can't resolve.
+    auto_winner = played_winner(h, a, played_lookup)
+    if auto_winner is not None:
+        res = (h, a, auto_winner, 1.0, True)
+    elif mid in R32_RESULT:
         res = (h, a, R32_RESULT[mid], 1.0, True)
     else:
         pw, pd_, pb, *_ = predict(h, a, at, de, mu, ha, elo)
@@ -623,6 +645,12 @@ with st.spinner(""):
     _fixture_key = tuple(sorted(MATCH_TIMES_UTC.items()))
     at,de,mu,ha,elo,team_list,upcoming,wc_all = load_and_build(tuple(MANUAL_RESULTS), _fixture_key)
 
+# Live results lookup for the knockout bracket — rebuilt every rerun from
+# wc_all, so a finished match added to MANUAL_RESULTS shows up as FT in the
+# Bracket/Tree tabs immediately, no separate R32_RESULT edit needed.
+played_lookup = {(r.home_team, r.away_team): (r.home_score, r.away_score)
+                 for r in wc_all.dropna(subset=["home_score","away_score"]).itertuples(index=False)}
+
 # ── Navigation state ────────────────────────────────────────
 if "tab" not in st.session_state: st.session_state.tab = "predict"
 if "grp" not in st.session_state: st.session_state.grp = "A"
@@ -918,7 +946,7 @@ elif st.session_state.tab == "bracket":
 
     cache = {}
     for mid in R32_ORDER + R16_ORDER + QF_ORDER + [101, 102]:
-        resolve_match(mid, at, de, mu, ha, elo, cache)
+        resolve_match(mid, at, de, mu, ha, elo, cache, played_lookup)
     pw, pd_, pb, *_ = predict(cache[101][2], cache[102][2], at, de, mu, ha, elo)
     edge = pw / (pw + pb) if (pw + pb) > 0 else 0.5
     champion = cache[101][2] if edge >= 0.5 else cache[102][2]
@@ -982,7 +1010,7 @@ elif st.session_state.tab == "tree":
 
     cache = {}
     for mid in R32_ORDER + R16_ORDER + QF_ORDER + [101, 102]:
-        resolve_match(mid, at, de, mu, ha, elo, cache)
+        resolve_match(mid, at, de, mu, ha, elo, cache, played_lookup)
     pw, pd_, pb, *_ = predict(cache[101][2], cache[102][2], at, de, mu, ha, elo)
     edge = pw / (pw + pb) if (pw + pb) > 0 else 0.5
     champion = cache[101][2] if edge >= 0.5 else cache[102][2]
