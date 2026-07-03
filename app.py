@@ -162,6 +162,7 @@ MANUAL_RESULTS = [
     ("Belgium", "Senegal", 3, 2, "2026-07-01"),  # Group G
     ("United States", "Bosnia and Herzegovina", 2, 0, "2026-07-02"),  # Group D
     ("Spain", "Austria", 3, 0, "2026-07-02"),  # Group H
+    ("Portugal", "Croatia", 2, 1, "2026-07-02"),  # Group K
 
 ]
 
