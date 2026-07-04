@@ -40,6 +40,14 @@ KNOCKOUT_ROUNDS = {
     ("Australia", "Egypt"):                  "Round of 32",
     ("Argentina", "Cape Verde"):             "Round of 32",
     ("Colombia", "Ghana"):                   "Round of 32",
+    # Round of 16
+    ("Canada", "Morocco"):                   "Round of 16",
+    ("Paraguay", "France"):                  "Round of 16",
+    ("Brazil", "Norway"):                    "Round of 16",
+    ("Mexico", "England"):                   "Round of 16",
+    ("Portugal", "Spain"):                   "Round of 16",
+    ("United States", "Belgium"):            "Round of 16",
+    ("Argentina", "Egypt"):                  "Round of 16",
 }
 
 FLAGS = {
@@ -273,6 +281,15 @@ MATCH_TIMES_UTC = {
     ("Australia","Egypt"):                      "2026-07-03 18:00",
     ("Argentina","Cape Verde"):                 "2026-07-03 22:00",
     ("Colombia","Ghana"):                       "2026-07-05 01:30",
+    # Round of 16 (kickoff times from ESPN; match 96's second team
+    # awaits the Colombia-Ghana winner — add it once decided)
+    ("Canada","Morocco"):                       "2026-07-04 17:00",
+    ("Paraguay","France"):                      "2026-07-04 21:00",
+    ("Brazil","Norway"):                        "2026-07-05 20:00",
+    ("Mexico","England"):                       "2026-07-06 00:00",
+    ("Portugal","Spain"):                       "2026-07-06 19:00",
+    ("United States","Belgium"):                "2026-07-07 00:00",
+    ("Argentina","Egypt"):                      "2026-07-07 16:00",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
