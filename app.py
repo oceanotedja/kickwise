@@ -48,6 +48,7 @@ KNOCKOUT_ROUNDS = {
     ("Portugal", "Spain"):                   "Round of 16",
     ("United States", "Belgium"):            "Round of 16",
     ("Argentina", "Egypt"):                  "Round of 16",
+    ("Switzerland", "Colombia"):             "Round of 16",
 }
 
 FLAGS = {
@@ -174,6 +175,7 @@ MANUAL_RESULTS = [
     ("Switzerland", "Algeria", 2, 0, "2026-07-03"),  # Group B
     ("Australia", "Egypt", 1, 1, "2026-07-03"),  # Group D
     ("Argentina", "Cape Verde", 3, 2, "2026-07-03"),  # Group J
+    ("Colombia", "Ghana", 1, 0, "2026-07-04"),  # Group K
 
 ]
 
@@ -280,9 +282,8 @@ MATCH_TIMES_UTC = {
     ("Switzerland","Algeria"):                  "2026-07-03 03:00",
     ("Australia","Egypt"):                      "2026-07-03 18:00",
     ("Argentina","Cape Verde"):                 "2026-07-03 22:00",
-    ("Colombia","Ghana"):                       "2026-07-05 01:30",
-    # Round of 16 (kickoff times from ESPN; match 96's second team
-    # awaits the Colombia-Ghana winner — add it once decided)
+    ("Colombia","Ghana"):                       "2026-07-04 01:30",
+    # Round of 16 (kickoff times from ESPN)
     ("Canada","Morocco"):                       "2026-07-04 17:00",
     ("Paraguay","France"):                      "2026-07-04 21:00",
     ("Brazil","Norway"):                        "2026-07-05 20:00",
@@ -290,6 +291,7 @@ MATCH_TIMES_UTC = {
     ("Portugal","Spain"):                       "2026-07-06 19:00",
     ("United States","Belgium"):                "2026-07-07 00:00",
     ("Argentina","Egypt"):                      "2026-07-07 16:00",
+    ("Switzerland","Colombia"):                 "2026-07-07 20:00",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
