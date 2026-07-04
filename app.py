@@ -161,6 +161,11 @@ MANUAL_RESULTS = [
     ("England", "DR Congo", 2, 1, "2026-07-01"),  # Group L
     ("Belgium", "Senegal", 3, 2, "2026-07-01"),  # Group G
     ("United States", "Bosnia and Herzegovina", 2, 0, "2026-07-02"),  # Group D
+    ("Spain", "Austria", 3, 0, "2026-07-02"),  # Group H
+    ("Portugal", "Croatia", 2, 1, "2026-07-02"),  # Group K
+    ("Switzerland", "Algeria", 2, 0, "2026-07-03"),  # Group B
+    ("Australia", "Egypt", 1, 1, "2026-07-03"),  # Group D
+    ("Argentina", "Cape Verde", 3, 2, "2026-07-03"),  # Group J
 
 ]
 
@@ -296,7 +301,8 @@ R32_MATCHES = {
 R32_ORDER = [74, 77, 73, 75, 83, 84, 81, 82, 76, 78, 79, 80, 86, 88, 85, 87]
 # Matches already decided (source: FIFA match centre)
 R32_RESULT = {73: "Canada", 74: "Paraguay", 75: "Morocco",
-              76: "Brazil", 77: "France", 78: "Norway"}
+              76: "Brazil", 77: "France", 78: "Norway",
+              88: "Egypt"}  # Egypt won 4-2 on penalties after 1-1
 R16_PAIRS = {89: (74, 77), 90: (73, 75), 91: (76, 78), 92: (79, 80),
              93: (83, 84), 94: (81, 82), 95: (86, 88), 96: (85, 87)}
 R16_ORDER = [89, 90, 91, 92, 93, 94, 95, 96]
