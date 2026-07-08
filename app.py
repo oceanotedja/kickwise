@@ -49,6 +49,11 @@ KNOCKOUT_ROUNDS = {
     ("United States", "Belgium"):            "Round of 16",
     ("Argentina", "Egypt"):                  "Round of 16",
     ("Switzerland", "Colombia"):             "Round of 16",
+    # Quarter Finals
+    ("France", "Morocco"):                   "Quarter Finals",
+    ("Spain", "Belgium"):                    "Quarter Finals",
+    ("Norway", "England"):                   "Quarter Finals",
+    ("Argentina", "Switzerland"):            "Quarter Finals",
 }
 
 FLAGS = {
@@ -300,6 +305,11 @@ MATCH_TIMES_UTC = {
     ("United States","Belgium"):                "2026-07-07 00:00",
     ("Argentina","Egypt"):                      "2026-07-07 16:00",
     ("Switzerland","Colombia"):                 "2026-07-07 20:00",
+    # Quarter Finals (kickoff times from ESPN)
+    ("France","Morocco"):                       "2026-07-09 20:00",
+    ("Spain","Belgium"):                        "2026-07-10 19:00",
+    ("Norway","England"):                       "2026-07-11 21:00",
+    ("Argentina","Switzerland"):                "2026-07-12 01:00",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
@@ -329,7 +339,8 @@ R32_ORDER = [74, 77, 73, 75, 83, 84, 81, 82, 76, 78, 79, 80, 86, 88, 85, 87]
 # Matches already decided (source: FIFA match centre)
 R32_RESULT = {73: "Canada", 74: "Paraguay", 75: "Morocco",
               76: "Brazil", 77: "France", 78: "Norway",
-              88: "Egypt"}  # Egypt won 4-2 on penalties after 1-1
+              88: "Egypt",         # won 4-2 on penalties after 1-1
+              96: "Switzerland"}   # won 4-3 on penalties after 0-0
 R16_PAIRS = {89: (74, 77), 90: (73, 75), 91: (76, 78), 92: (79, 80),
              93: (83, 84), 94: (81, 82), 95: (86, 88), 96: (85, 87)}
 R16_ORDER = [89, 90, 91, 92, 93, 94, 95, 96]
