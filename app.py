@@ -750,9 +750,21 @@ if st.session_state.tab == "predict":
     view_mode = st.radio("View", ["⚽ Upcoming", "📋 Results"],
                          horizontal=True, label_visibility="collapsed")
 
-    # Round filter — applies to both Upcoming and Results
-    round_sel = st.radio("Round", ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"],
-                         index=1, horizontal=True, label_visibility="collapsed")
+    # Round filter — applies to both Upcoming and Results.
+    # Defaults to the round of the next unplayed fixture so the app
+    # opens on matches that can still be predicted.
+    ROUND_OPTIONS = ["Group Stage","Round of 32","Round of 16","Quarter Finals","Semi Finals","Final"]
+    if upcoming.empty:
+        default_round = len(ROUND_OPTIONS) - 1
+    else:
+        next_fix = min(
+            upcoming.itertuples(index=False),
+            key=lambda r: MATCH_TIMES_UTC.get((r.home_team, r.away_team), "9999"),
+        )
+        default_round = ROUND_OPTIONS.index(
+            KNOCKOUT_ROUNDS.get((next_fix.home_team, next_fix.away_team), "Group Stage"))
+    round_sel = st.radio("Round", ROUND_OPTIONS,
+                         index=default_round, horizontal=True, label_visibility="collapsed")
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     def filter_by_round(df, sel):
