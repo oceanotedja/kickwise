@@ -54,6 +54,9 @@ KNOCKOUT_ROUNDS = {
     ("Spain", "Belgium"):                    "Quarter Finals",
     ("Norway", "England"):                   "Quarter Finals",
     ("Argentina", "Switzerland"):            "Quarter Finals",
+    # Semi Finals
+    ("France", "Spain"):                     "Semi Finals",
+    ("England", "Argentina"):                "Semi Finals",
 }
 
 FLAGS = {
@@ -191,6 +194,8 @@ MANUAL_RESULTS = [
     ("Switzerland", "Colombia", 0, 0, "2026-07-07"),  # Group B
     ("France", "Morocco", 2, 0, "2026-07-09"),  # Quarter Finals
     ("Spain", "Belgium", 2, 1, "2026-07-10"),  # Quarter Finals
+    ("Norway", "England", 1, 2, "2026-07-11"),  # Quarter Finals
+    ("Argentina", "Switzerland", 3, 1, "2026-07-12"),  # Quarter Finals
 
 ]
 
@@ -312,6 +317,9 @@ MATCH_TIMES_UTC = {
     ("Spain","Belgium"):                        "2026-07-10 19:00",
     ("Norway","England"):                       "2026-07-11 21:00",
     ("Argentina","Switzerland"):                "2026-07-12 01:00",
+    # Semi Finals (confirmed times, Dallas Stadium / Atlanta Stadium)
+    ("France","Spain"):                         "2026-07-14 19:00",
+    ("England","Argentina"):                    "2026-07-15 19:00",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
