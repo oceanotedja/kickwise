@@ -190,6 +190,7 @@ MANUAL_RESULTS = [
     ("Argentina", "Egypt", 3, 2, "2026-07-07"),  # Group J
     ("Switzerland", "Colombia", 0, 0, "2026-07-07"),  # Group B
     ("France", "Morocco", 2, 0, "2026-07-09"),  # Quarter Finals
+    ("Spain", "Belgium", 2, 1, "2026-07-10"),  # Quarter Finals
 
 ]
 
