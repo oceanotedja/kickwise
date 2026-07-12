@@ -81,6 +81,17 @@ def parse_match_times(content):
     return times
 
 
+def parse_knockout_rounds(content):
+    m = re.search(r"KNOCKOUT_ROUNDS\s*=\s*\{(.*?)\n\}", content, re.DOTALL)
+    if not m:
+        return {}
+    rounds = {}
+    pat = r'\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)\s*:\s*"([^"]+)"'
+    for match in re.finditer(pat, m.group(1)):
+        rounds[(match.group(1), match.group(2))] = match.group(3)
+    return rounds
+
+
 def fetch_espn_results(dates):
     """Query ESPN scoreboard API for each date and return completed match scores."""
     results = {}
@@ -143,7 +154,7 @@ def fetch_csv_results():
     return results
 
 
-def find_new_results(match_times, existing, espn, csv_results):
+def find_new_results(match_times, existing, espn, csv_results, knockout_rounds):
     """Return confirmed new results for finished fixtures not yet in MANUAL_RESULTS."""
     now_utc = datetime.now(timezone.utc)
     new = []
@@ -162,9 +173,10 @@ def find_new_results(match_times, existing, espn, csv_results):
 
         hs, as_i = score
         utc_date = utc_str.split()[0]
-        group = TEAM_TO_GROUP.get(h, "?")
+        round_name = knockout_rounds.get((h, a)) or knockout_rounds.get((a, h))
+        label = round_name if round_name else f"Group {TEAM_TO_GROUP.get(h, '?')}"
         src = "ESPN" if (h, a) in espn else "CSV"
-        new.append((h, a, hs, as_i, utc_date, group, src))
+        new.append((h, a, hs, as_i, utc_date, label, src))
 
     return sorted(new, key=lambda x: x[4])
 
@@ -174,8 +186,8 @@ def insert_results(content, new_results):
     if not m:
         sys.exit("ERROR: Could not locate MANUAL_RESULTS block in app.py")
     additions = "".join(
-        f'\n    ("{h}", "{a}", {hs}, {as_i}, "{date}"),  # Group {group}'
-        for h, a, hs, as_i, date, group, *_ in new_results
+        f'\n    ("{h}", "{a}", {hs}, {as_i}, "{date}"),  # {label}'
+        for h, a, hs, as_i, date, label, *_ in new_results
     )
     return (
         content[: m.start()]
@@ -190,15 +202,15 @@ def insert_results(content, new_results):
 
 def build_commit_message(new_results):
     dates = sorted({r[4] for r in new_results})
-    groups = sorted({r[5] for r in new_results})
+    labels = sorted({r[5] for r in new_results})
     if len(dates) == 1:
         dt = datetime.strptime(dates[0], "%Y-%m-%d")
         date_label = dt.strftime("%b %-d")
     else:
         dts = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
         date_label = " & ".join(dt.strftime("%b %-d") for dt in dts)
-    groups_str = " & ".join(f"Group {g}" for g in groups)
-    return f"Add {date_label} results ({groups_str})"
+    labels_str = " & ".join(labels)
+    return f"Add {date_label} results ({labels_str})"
 
 
 def main():
@@ -207,6 +219,7 @@ def main():
 
     existing = parse_existing_results(content)
     match_times = parse_match_times(content)
+    knockout_rounds = parse_knockout_rounds(content)
     now_utc = datetime.now(timezone.utc)
     print(f"UTC now : {now_utc.strftime('%Y-%m-%d %H:%M')}")
     print(f"Existing: {len(existing)} results, {len(match_times)} fixtures")
@@ -233,14 +246,14 @@ def main():
     csv_results = fetch_csv_results()
     print(f"CSV total: {len(csv_results)} WC 2026 result(s)")
 
-    new_results = find_new_results(match_times, existing, espn_results, csv_results)
+    new_results = find_new_results(match_times, existing, espn_results, csv_results, knockout_rounds)
     if not new_results:
         print("Nothing new to add.")
         return
 
     print(f"Adding {len(new_results)} result(s):")
-    for h, a, hs, as_i, date, group, src in new_results:
-        print(f"  [{src}] {h} {hs}–{as_i} {a}  ({date})  [Group {group}]")
+    for h, a, hs, as_i, date, label, src in new_results:
+        print(f"  [{src}] {h} {hs}–{as_i} {a}  ({date})  [{label}]")
 
     new_content = insert_results(content, new_results)
     with open(APP_PY, "w", encoding="utf-8") as f:
