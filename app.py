@@ -57,6 +57,8 @@ KNOCKOUT_ROUNDS = {
     # Semi Finals
     ("France", "Spain"):                     "Semi Finals",
     ("England", "Argentina"):                "Semi Finals",
+    # Final
+    ("Spain", "Argentina"):                  "Final",
 }
 
 FLAGS = {
@@ -322,6 +324,8 @@ MATCH_TIMES_UTC = {
     # Semi Finals (confirmed times, Dallas Stadium / Atlanta Stadium)
     ("France","Spain"):                         "2026-07-14 19:00",
     ("England","Argentina"):                    "2026-07-15 19:00",
+    # Final (confirmed time, MetLife Stadium)
+    ("Spain","Argentina"):                      "2026-07-19 19:00",
 }
 
 # ── KNOCKOUT BRACKET ─────────────────────────────────────────
